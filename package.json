@@ -1,0 +1,52 @@
+{
+  "name": "nebula-protocol",
+  "version": "1.0.0",
+  "description": "Nebula Lending Protocol",
+  "main": "index.js",
+  "scripts": {
+    "clear": "rm -rf build",
+    "clone-packages": "sh ./security/clone-packages.sh",
+    "compile": "brownie compile --all",
+    "ganache": "npx ganache-cli --gasLimit 6721975 --gasPrice 20000000000 -e 10000000 -p 8545 -a 20",
+    "generate-abi": "npx truffle-abi -o ./abi",
+    "dev:lint": "npx solhint contracts/**/*.sol",
+    "dev:contract-size": "npx truffle run contract-size",
+    "dev:docgen": "npx solidity-docgen -i ./contracts -o ./docs -t docgen --solc-module solc -H docgen/helpers.js",
+    "dev:prettier": "npx prettier --write .",
+    "dev:prettier-check": "npx prettier --check .",
+    "prettier:fix": "npx prettier --write \"contracts/**/*.sol\"",
+    "prettier:check": "npx prettier --check \"contracts/**/*.sol\"",
+    "sec:flatten": "sh ./security/flattener-run.sh",
+    "sec:slither": "slither . --config-file ./security/slither/slither-config.json  || true",
+    "generate-artifacts": "npm run compile && npm run generate-abi",
+    "preinstall": "pip3 install -r requirements-dev.txt",
+    "postinstall": "npm run clone-packages && npm run generate-artifacts",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git"
+  },
+  "keywords": [],
+  "author": "Blaize.tech",
+  "license": "ISC",
+  "dependencies": {
+    "@openzeppelin/contracts": "4.2.0",
+    "@openzeppelin/contracts-upgradeable": "4.2.0",
+    "dotenv": "^10.0.0",
+    "ganache-cli": "^6.12.2",
+    "web3": "^1.5.2",
+    "web3-utils": "^1.5.2"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^13.1.0",
+    "@commitlint/config-conventional": "^13.1.0",
+    "husky": "^7.0.2",
+    "prettier": "^2.3.2",
+    "prettier-plugin-solidity": "^1.0.0-beta.17",
+    "solc": "0.8.6",
+    "solhint": "^3.3.6",
+    "solidity-docgen": "^0.5.13",
+    "truffle": "^5.4.9",
+    "truffle-contract-size": "^2.0.1"
+  }
+}
