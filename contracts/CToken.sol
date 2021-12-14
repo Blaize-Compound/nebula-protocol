@@ -13,7 +13,6 @@ import "./interfaces/ICTokenEvents.sol";
  * @author Compound
  */
 abstract contract CToken is CTokenStorage, ICTokenEvents {
-
     modifier onlyAdmin(address _caller) {
         require(_caller == admin, "Caller is not an admin");
         _;
@@ -28,18 +27,26 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param symbol_ EIP-20 symbol of this token
      * @param decimals_ EIP-20 decimal precision of this token
      */
-    function initialize(IController comptroller_,
-                        IInterestRateModel interestRateModel_,
-                        uint initialExchangeRateMantissa_,
-                        string memory name_,
-                        string memory symbol_,
-                        uint8 decimals_) public {
+    function initialize(
+        IController comptroller_,
+        IInterestRateModel interestRateModel_,
+        uint256 initialExchangeRateMantissa_,
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_
+    ) public {
         require(msg.sender == admin, "only admin may initialize the market");
-        require(accrualBlockNumber == 0 && borrowIndex == 0, "market may only be initialized once");
+        require(
+            accrualBlockNumber == 0 && borrowIndex == 0,
+            "market may only be initialized once"
+        );
 
         // Set initial exchange rate
         initialExchangeRateMantissa = initialExchangeRateMantissa_;
-        require(initialExchangeRateMantissa > 0, "initial exchange rate must be greater than zero.");
+        require(
+            initialExchangeRateMantissa > 0,
+            "initial exchange rate must be greater than zero."
+        );
 
         // Set the comptroller
         setController(comptroller_);
@@ -68,7 +75,12 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param tokens The number of tokens to transfer
      * @return Whether or not the transfer succeeded
      */
-    function transferTokens(address spender, address src, address dst, uint tokens) internal returns (bool) {
+    function transferTokens(
+        address spender,
+        address src,
+        address dst,
+        uint256 tokens
+    ) internal returns (bool) {
         /* Fail if transfer not allowed */
         if (!comptroller.transferAllowed(address(this), src, dst, tokens)) {
             return false;
@@ -80,15 +92,15 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         }
 
         /* Get the allowance, infinite for the account owner */
-        uint startingAllowance = 0;
+        uint256 startingAllowance = 0;
         if (spender == src) {
-            startingAllowance = type(uint).max;
+            startingAllowance = type(uint256).max;
         } else {
             startingAllowance = transferAllowances[src][spender];
         }
 
         /* Do the calculations, checking for {under,over}flow */
-        uint allowanceNew = startingAllowance - tokens;
+        uint256 allowanceNew = startingAllowance - tokens;
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -98,7 +110,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         accountTokens[dst] += tokens;
 
         /* Eat some of the allowance (if necessary) */
-        if (startingAllowance != type(uint).max) {
+        if (startingAllowance != type(uint256).max) {
             transferAllowances[src][spender] = allowanceNew;
         }
 
@@ -114,7 +126,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param amount The number of tokens to transfer
      * @return Whether or not the transfer succeeded
      */
-    function transfer(address dst, uint256 amount) external nonReentrant returns (bool) {
+    function transfer(address dst, uint256 amount)
+        external
+        nonReentrant
+        returns (bool)
+    {
         return transferTokens(msg.sender, msg.sender, dst, amount);
     }
 
@@ -125,7 +141,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param amount The number of tokens to transfer
      * @return Whether or not the transfer succeeded
      */
-    function transferFrom(address src, address dst, uint256 amount) external nonReentrant returns (bool) {
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 amount
+    ) external nonReentrant returns (bool) {
         return transferTokens(msg.sender, src, dst, amount);
     }
 
@@ -150,7 +170,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param spender The address of the account which may transfer tokens
      * @return The number of tokens allowed to be spent (-1 means infinite)
      */
-    function allowance(address owner, address spender) external view returns (uint256) {
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256)
+    {
         return transferAllowances[owner][spender];
     }
 
@@ -169,9 +193,9 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param owner The address of the account to query
      * @return The amount of underlying owned by owner
      */
-    function balanceOfUnderlying(address owner) external returns (uint) {
-        uint exchangeRate = exchangeRateCurrent();
-        uint balance = (exchangeRate * accountTokens[owner]) / 1e18;
+    function balanceOfUnderlying(address owner) external returns (uint256) {
+        uint256 exchangeRate = exchangeRateCurrent();
+        uint256 balance = (exchangeRate * accountTokens[owner]) / 1e18;
         return balance;
     }
 
@@ -181,10 +205,18 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param account Address of the account to snapshot
      * @return (token balance, borrow balance, exchange rate mantissa)
      */
-    function getAccountSnapshot(address account) external view returns (uint, uint, uint) {
-        uint cTokenBalance = accountTokens[account];
-        uint borrowBalance = borrowBalanceStoredInternal(account);
-        uint exchangeRateMantissa = exchangeRateStoredInternal();
+    function getAccountSnapshot(address account)
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        uint256 cTokenBalance = accountTokens[account];
+        uint256 borrowBalance = borrowBalanceStoredInternal(account);
+        uint256 exchangeRateMantissa = exchangeRateStoredInternal();
 
         return (cTokenBalance, borrowBalance, exchangeRateMantissa);
     }
@@ -193,14 +225,14 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev Function to simply retrieve block number
      *  This exists mainly for inheriting test contracts to stub this result.
      */
-    function getBlockNumber() internal view returns (uint) {
+    function getBlockNumber() internal view returns (uint256) {
         return block.number;
     }
 
     /**
      * @dev Function to simply retrieve accrual block number.
      */
-    function getAccrualBlockNumber() external view returns (uint) {
+    function getAccrualBlockNumber() external view returns (uint256) {
         return accrualBlockNumber;
     }
 
@@ -208,23 +240,34 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @notice Returns the current per-block borrow interest rate for this cToken
      * @return The borrow interest rate per block, scaled by 1e18
      */
-    function borrowRatePerBlock() external view returns (uint) {
-        return interestRateModel.getBorrowRate(getCashPrior(), totalBorrows, totalReserves);
+    function borrowRatePerBlock() external view returns (uint256) {
+        return
+            interestRateModel.getBorrowRate(
+                getCashPrior(),
+                totalBorrows,
+                totalReserves
+            );
     }
 
     /**
      * @notice Returns the current per-block supply interest rate for this cToken
      * @return The supply interest rate per block, scaled by 1e18
      */
-    function supplyRatePerBlock() external view returns (uint) {
-        return interestRateModel.getSupplyRate(getCashPrior(), totalBorrows, totalReserves, reserveFactorMantissa);
+    function supplyRatePerBlock() external view returns (uint256) {
+        return
+            interestRateModel.getSupplyRate(
+                getCashPrior(),
+                totalBorrows,
+                totalReserves,
+                reserveFactorMantissa
+            );
     }
 
     /**
      * @notice Returns the current total borrows plus accrued interest
      * @return The total borrows with interest
      */
-    function totalBorrowsCurrent() external nonReentrant returns (uint) {
+    function totalBorrowsCurrent() external nonReentrant returns (uint256) {
         accrueInterest();
         return totalBorrows;
     }
@@ -234,7 +277,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param account The address whose balance should be calculated after updating borrowIndex
      * @return The calculated balance
      */
-    function borrowBalanceCurrent(address account) external nonReentrant returns (uint) {
+    function borrowBalanceCurrent(address account)
+        external
+        nonReentrant
+        returns (uint256)
+    {
         accrueInterest();
         return borrowBalanceStored(account);
     }
@@ -244,8 +291,12 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param account The address whose balance should be calculated
      * @return The calculated balance
      */
-    function borrowBalanceStored(address account) public view returns (uint) {
-        uint result = borrowBalanceStoredInternal(account);
+    function borrowBalanceStored(address account)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 result = borrowBalanceStoredInternal(account);
         return result;
     }
 
@@ -254,10 +305,14 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param account The address whose balance should be calculated
      * @return (error code, the calculated balance or 0 if error code is non-zero)
      */
-    function borrowBalanceStoredInternal(address account) internal view returns (uint) {
+    function borrowBalanceStoredInternal(address account)
+        internal
+        view
+        returns (uint256)
+    {
         /* Note: we do not assert that the market is up to date */
-        uint principalTimesIndex;
-        uint result;
+        uint256 principalTimesIndex;
+        uint256 result;
 
         /* Get borrowBalance and borrowIndex */
         BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
@@ -283,7 +338,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @notice Accrue interest then return the up-to-date exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
-    function exchangeRateCurrent() public nonReentrant returns (uint) {
+    function exchangeRateCurrent() public nonReentrant returns (uint256) {
         accrueInterest();
         return exchangeRateStored();
     }
@@ -293,7 +348,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev This function does not accrue interest before calculating the exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
-    function exchangeRateStored() public view returns (uint) {
+    function exchangeRateStored() public view returns (uint256) {
         return exchangeRateStoredInternal();
     }
 
@@ -302,8 +357,8 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev This function does not accrue interest before calculating the exchange rate
      * @return (error code, calculated exchange rate scaled by 1e18)
      */
-    function exchangeRateStoredInternal() internal view returns (uint) {
-        uint _totalSupply = totalSupply;
+    function exchangeRateStoredInternal() internal view returns (uint256) {
+        uint256 _totalSupply = totalSupply;
         if (_totalSupply == 0) {
             /*
              * If there are no tokens minted:
@@ -313,12 +368,12 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         }
 
         /*
-            * Otherwise:
-            *  exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
-            */
-        uint totalCash = getCashPrior();
-        uint cashPlusBorrowsMinusReserves;
-        uint exchangeRate;
+         * Otherwise:
+         *  exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
+         */
+        uint256 totalCash = getCashPrior();
+        uint256 cashPlusBorrowsMinusReserves;
+        uint256 exchangeRate;
 
         cashPlusBorrowsMinusReserves = totalCash + totalBorrows - totalReserves;
 
@@ -331,7 +386,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @notice Get cash balance of this cToken in the underlying asset
      * @return The quantity of underlying asset owned by this contract
      */
-    function getCash() external view returns (uint) {
+    function getCash() external view returns (uint256) {
         return getCashPrior();
     }
 
@@ -342,8 +397,8 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      */
     function accrueInterest() public {
         /* Remember the initial block number */
-        uint currentBlockNumber = getBlockNumber();
-        uint accrualBlockNumberPrior = accrualBlockNumber;
+        uint256 currentBlockNumber = getBlockNumber();
+        uint256 accrualBlockNumberPrior = accrualBlockNumber;
 
         /* Short-circuit accumulating 0 interest */
         if (accrualBlockNumberPrior == currentBlockNumber) {
@@ -351,17 +406,24 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         }
 
         /* Read the previous values out of storage */
-        uint cashPrior = getCashPrior();
-        uint borrowsPrior = totalBorrows;
-        uint reservesPrior = totalReserves;
-        uint borrowIndexPrior = borrowIndex;
+        uint256 cashPrior = getCashPrior();
+        uint256 borrowsPrior = totalBorrows;
+        uint256 reservesPrior = totalReserves;
+        uint256 borrowIndexPrior = borrowIndex;
 
         /* Calculate the current borrow interest rate */
-        uint borrowRateMantissa = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
-        require(borrowRateMantissa <= borrowRateMaxMantissa, "borrow rate is absurdly high");
+        uint256 borrowRateMantissa = interestRateModel.getBorrowRate(
+            cashPrior,
+            borrowsPrior,
+            reservesPrior
+        );
+        require(
+            borrowRateMantissa <= borrowRateMaxMantissa,
+            "borrow rate is absurdly high"
+        );
 
         /* Calculate the number of blocks elapsed since the last accrual */
-        uint blockDelta = currentBlockNumber - accrualBlockNumberPrior;
+        uint256 blockDelta = currentBlockNumber - accrualBlockNumberPrior;
 
         /*
          * Calculate the interest accumulated into borrows and reserves and the new index:
@@ -372,11 +434,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
          *  borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
          */
 
-        uint simpleInterestFactor;
-        uint interestAccumulated;
-        uint totalBorrowsNew;
-        uint totalReservesNew;
-        uint borrowIndexNew;
+        uint256 simpleInterestFactor;
+        uint256 interestAccumulated;
+        uint256 totalBorrowsNew;
+        uint256 totalReservesNew;
+        uint256 borrowIndexNew;
 
         simpleInterestFactor = borrowRateMantissa * blockDelta;
 
@@ -384,9 +446,13 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
 
         totalBorrowsNew = interestAccumulated + borrowsPrior;
 
-        totalReservesNew = ((reserveFactorMantissa * interestAccumulated) / 1e18) + reservesPrior;
+        totalReservesNew =
+            ((reserveFactorMantissa * interestAccumulated) / 1e18) +
+            reservesPrior;
 
-        borrowIndexNew = ((simpleInterestFactor * borrowIndexPrior) / 1e18) + borrowIndexPrior;
+        borrowIndexNew =
+            ((simpleInterestFactor * borrowIndexPrior) / 1e18) +
+            borrowIndexPrior;
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -399,7 +465,12 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         totalReserves = totalReservesNew;
 
         /* We emit an AccrueInterest event */
-        emit AccrueInterest(cashPrior, interestAccumulated, borrowIndexNew, totalBorrowsNew);
+        emit AccrueInterest(
+            cashPrior,
+            interestAccumulated,
+            borrowIndexNew,
+            totalBorrowsNew
+        );
     }
 
     /**
@@ -408,7 +479,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param mintAmount The amount of the underlying asset to supply
      * @return the actual mint amount.
      */
-    function mintInternal(uint mintAmount) internal nonReentrant returns (uint) {
+    function mintInternal(uint256 mintAmount)
+        internal
+        nonReentrant
+        returns (uint256)
+    {
         accrueInterest();
         // mintFresh emits the actual Mint event if successful and logs on errors, so we don't need to
         return mintFresh(msg.sender, mintAmount);
@@ -421,14 +496,20 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param mintAmount The amount of the underlying asset to supply
      * @return the actual mint amount.
      */
-    function mintFresh(address minter, uint mintAmount) internal returns (uint) {
+    function mintFresh(address minter, uint256 mintAmount)
+        internal
+        returns (uint256)
+    {
         /* Fail if mint not allowed */
-        require(comptroller.mintAllowed(address(this), minter, mintAmount), "Mint is not allowed");
+        require(
+            comptroller.mintAllowed(address(this), minter, mintAmount),
+            "Mint is not allowed"
+        );
 
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
-        uint exchangeRateMantissa = exchangeRateStoredInternal();
+        uint256 exchangeRateMantissa = exchangeRateStoredInternal();
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -442,14 +523,15 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
          *  in case of a fee. On success, the cToken holds an additional actualMintAmount
          *  of cash.
          */
-        uint actualMintAmount = doTransferIn(minter, mintAmount);
+        uint256 actualMintAmount = doTransferIn(minter, mintAmount);
 
         /*
          * We get the current exchange rate and calculate the number of cTokens to be minted:
          *  mintTokens = actualMintAmount / exchangeRate
          */
 
-        uint mintTokens = ((actualMintAmount * 1e18) * 1e18 / exchangeRateMantissa) / 1e18;
+        uint256 mintTokens = (((actualMintAmount * 1e18) * 1e18) /
+            exchangeRateMantissa) / 1e18;
 
         /* We write previously calculated values into storage */
         totalSupply += mintTokens;
@@ -467,7 +549,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemTokens The number of cTokens to redeem into underlying
      */
-    function redeemInternal(uint redeemTokens) internal nonReentrant {
+    function redeemInternal(uint256 redeemTokens) internal nonReentrant {
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), redeemTokens, 0);
@@ -478,7 +560,10 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to receive from redeeming cTokens
      */
-    function redeemUnderlyingInternal(uint redeemAmount) internal nonReentrant {
+    function redeemUnderlyingInternal(uint256 redeemAmount)
+        internal
+        nonReentrant
+    {
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), 0, redeemAmount);
@@ -491,13 +576,20 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param redeemTokensIn The number of cTokens to redeem into underlying (only one of redeemTokensIn or redeemAmountIn may be non-zero)
      * @param redeemAmountIn The number of underlying tokens to receive from redeeming cTokens (only one of redeemTokensIn or redeemAmountIn may be non-zero)
      */
-    function redeemFresh(address payable redeemer, uint redeemTokensIn, uint redeemAmountIn) internal {
-        require(redeemTokensIn == 0 || redeemAmountIn == 0, "one of redeemTokensIn or redeemAmountIn must be zero");
+    function redeemFresh(
+        address payable redeemer,
+        uint256 redeemTokensIn,
+        uint256 redeemAmountIn
+    ) internal {
+        require(
+            redeemTokensIn == 0 || redeemAmountIn == 0,
+            "one of redeemTokensIn or redeemAmountIn must be zero"
+        );
 
         /* exchangeRate = invoke Exchange Rate Stored() */
-        uint exchangeRateMantissa = exchangeRateStoredInternal();
-        uint redeemTokens;
-        uint redeemAmount;
+        uint256 exchangeRateMantissa = exchangeRateStoredInternal();
+        uint256 redeemTokens;
+        uint256 redeemAmount;
 
         /* If redeemTokensIn > 0: */
         if (redeemTokensIn > 0) {
@@ -515,16 +607,20 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
              *  redeemAmount = redeemAmountIn
              */
 
-            redeemTokens = ((redeemAmountIn * 1e18) * 1e18 / exchangeRateMantissa) / 1e18;
+            redeemTokens =
+                (((redeemAmountIn * 1e18) * 1e18) / exchangeRateMantissa) /
+                1e18;
             redeemAmount = redeemAmountIn;
         }
 
         /* Fail if redeem not allowed */
-        require(comptroller.redeemAllowed(address(this), redeemer, redeemTokens), "Redeem is not allowed");
+        require(
+            comptroller.redeemAllowed(address(this), redeemer, redeemTokens),
+            "Redeem is not allowed"
+        );
 
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
-
 
         /* Fail gracefully if protocol has insufficient cash */
         require(redeemAmount < getCashPrior(), "Insufficient amount of cash");
@@ -550,26 +646,36 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         emit Redeem(redeemer, redeemAmount, redeemTokens);
 
         /* We call the defense hook */
-        comptroller.redeemVerify(address(this), redeemer, redeemAmount, redeemTokens);
+        comptroller.redeemVerify(
+            address(this),
+            redeemer,
+            redeemAmount,
+            redeemTokens
+        );
     }
 
     /**
-      * @notice Sender borrows assets from the protocol to their own address
-      * @param borrowAmount The amount of the underlying asset to borrow
-      */
-    function borrowInternal(uint borrowAmount) internal nonReentrant {
+     * @notice Sender borrows assets from the protocol to their own address
+     * @param borrowAmount The amount of the underlying asset to borrow
+     */
+    function borrowInternal(uint256 borrowAmount) internal nonReentrant {
         accrueInterest();
         // borrowFresh emits borrow-specific logs on errors, so we don't need to
         borrowFresh(payable(msg.sender), borrowAmount);
     }
 
     /**
-      * @notice Users borrow assets from the protocol to their own address
-      * @param borrowAmount The amount of the underlying asset to borrow
-      */
-    function borrowFresh(address payable borrower, uint borrowAmount) internal {
+     * @notice Users borrow assets from the protocol to their own address
+     * @param borrowAmount The amount of the underlying asset to borrow
+     */
+    function borrowFresh(address payable borrower, uint256 borrowAmount)
+        internal
+    {
         /* Fail if borrow not allowed */
-        require(comptroller.borrowAllowed(address(this), borrower, borrowAmount), "Borrow is not allowed");
+        require(
+            comptroller.borrowAllowed(address(this), borrower, borrowAmount),
+            "Borrow is not allowed"
+        );
 
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
@@ -577,8 +683,8 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         /* Fail gracefully if protocol has insufficient underlying cash */
         require(borrowAmount < getCashPrior(), "Insufficient cash");
 
-        uint accountBorrowsStored = borrowBalanceStoredInternal(borrower);
-        uint accountBorrowsNew = accountBorrowsStored + borrowAmount;
+        uint256 accountBorrowsStored = borrowBalanceStoredInternal(borrower);
+        uint256 accountBorrowsNew = accountBorrowsStored + borrowAmount;
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -606,7 +712,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param repayAmount The amount to repay
      * @return the actual repayment amount.
      */
-    function repayBorrowInternal(uint repayAmount) internal nonReentrant returns (uint) {
+    function repayBorrowInternal(uint256 repayAmount)
+        internal
+        nonReentrant
+        returns (uint256)
+    {
         accrueInterest();
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
         return repayBorrowFresh(msg.sender, msg.sender, repayAmount);
@@ -618,7 +728,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param repayAmount The amount to repay
      * @return the actual repayment amount.
      */
-    function repayBorrowBehalfInternal(address borrower, uint repayAmount) internal nonReentrant returns (uint) {
+    function repayBorrowBehalfInternal(address borrower, uint256 repayAmount)
+        internal
+        nonReentrant
+        returns (uint256)
+    {
         accrueInterest();
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
         return repayBorrowFresh(msg.sender, borrower, repayAmount);
@@ -631,18 +745,30 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param repayAmount the amount of undelrying tokens being returned
      * @return the actual repayment amount.
      */
-    function repayBorrowFresh(address payer, address borrower, uint repayAmount) internal returns (uint) {
+    function repayBorrowFresh(
+        address payer,
+        address borrower,
+        uint256 repayAmount
+    ) internal returns (uint256) {
         /* Fail if repayBorrow not allowed */
-        require(comptroller.repayBorrowAllowed(address(this), payer, borrower, repayAmount), "Repay is not allowed");
+        require(
+            comptroller.repayBorrowAllowed(
+                address(this),
+                payer,
+                borrower,
+                repayAmount
+            ),
+            "Repay is not allowed"
+        );
 
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
         /* We fetch the amount the borrower owes, with accumulated interest */
-        uint accountBorrowsStored = borrowBalanceStoredInternal(borrower);
+        uint256 accountBorrowsStored = borrowBalanceStoredInternal(borrower);
 
         /* If repayAmount == -1, repayAmount = accountBorrows */
-        if (repayAmount == type(uint).max) {
+        if (repayAmount == type(uint256).max) {
             repayAmount = accountBorrowsStored;
         }
 
@@ -657,9 +783,8 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
          *  doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
          *   it returns the amount actually transferred, in case of a fee.
          */
-        uint actualRepayAmount = doTransferIn(payer, repayAmount);
-        uint accountBorrowsNew = accountBorrowsStored - actualRepayAmount;
-
+        uint256 actualRepayAmount = doTransferIn(payer, repayAmount);
+        uint256 accountBorrowsNew = accountBorrowsStored - actualRepayAmount;
 
         /* We write the previously calculated values into storage */
         accountBorrows[borrower].principal = accountBorrowsNew;
@@ -667,7 +792,13 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         totalBorrows -= actualRepayAmount;
 
         /* We emit a RepayBorrow event */
-        emit RepayBorrow(payer, borrower, actualRepayAmount, accountBorrowsNew, totalBorrows);
+        emit RepayBorrow(
+            payer,
+            borrower,
+            actualRepayAmount,
+            accountBorrowsNew,
+            totalBorrows
+        );
         return actualRepayAmount;
     }
 
@@ -679,11 +810,21 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param repayAmount The amount of the underlying borrowed asset to repay
      * @return the actual repayment amount.
      */
-    function liquidateBorrowInternal(address borrower, uint repayAmount, ICToken cTokenCollateral) internal nonReentrant returns (uint) {
+    function liquidateBorrowInternal(
+        address borrower,
+        uint256 repayAmount,
+        ICToken cTokenCollateral
+    ) internal nonReentrant returns (uint256) {
         accrueInterest();
         cTokenCollateral.accrueInterest();
         // liquidateBorrowFresh emits borrow-specific logs on errors, so we don't need to
-        return liquidateBorrowFresh(msg.sender, borrower, repayAmount, cTokenCollateral);
+        return
+            liquidateBorrowFresh(
+                msg.sender,
+                borrower,
+                repayAmount,
+                cTokenCollateral
+            );
     }
 
     /**
@@ -695,31 +836,63 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param repayAmount The amount of the underlying borrowed asset to repay
      * @return the actual repayment amount.
      */
-    function liquidateBorrowFresh(address liquidator, address borrower, uint repayAmount, ICToken cTokenCollateral) internal returns (uint) {
+    function liquidateBorrowFresh(
+        address liquidator,
+        address borrower,
+        uint256 repayAmount,
+        ICToken cTokenCollateral
+    ) internal returns (uint256) {
         /* Fail if liquidate not allowed */
-        require(comptroller.liquidateBorrowAllowed(address(this), address(cTokenCollateral), liquidator, borrower, repayAmount), "Liquidate is not allowed");
+        require(
+            comptroller.liquidateBorrowAllowed(
+                address(this),
+                address(cTokenCollateral),
+                liquidator,
+                borrower,
+                repayAmount
+            ),
+            "Liquidate is not allowed"
+        );
 
         /* Verify market's block number equals current block number */
-        require(accrualBlockNumber == getBlockNumber() && cTokenCollateral.getAccrualBlockNumber() == getBlockNumber(), "Market is not fresh");
+        require(
+            accrualBlockNumber == getBlockNumber() &&
+                cTokenCollateral.getAccrualBlockNumber() == getBlockNumber(),
+            "Market is not fresh"
+        );
 
         /* Fail if borrower = liquidator */
-        require (borrower != liquidator, "Can't liquidate your own position");
+        require(borrower != liquidator, "Can't liquidate your own position");
 
         /* Fail if repayAmount = 0 */
-        require(repayAmount != 0 && repayAmount != type(uint).max, "Invalid repay amount");
+        require(
+            repayAmount != 0 && repayAmount != type(uint256).max,
+            "Invalid repay amount"
+        );
 
         /* Fail if repayBorrow fails */
-        uint actualRepayAmount = repayBorrowFresh(liquidator, borrower, repayAmount);
+        uint256 actualRepayAmount = repayBorrowFresh(
+            liquidator,
+            borrower,
+            repayAmount
+        );
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
         /* We calculate the number of collateral tokens that will be seized */
-        uint seizeTokens = comptroller.liquidateCalculateSeizeTokens(address(this), address(cTokenCollateral), actualRepayAmount);
+        uint256 seizeTokens = comptroller.liquidateCalculateSeizeTokens(
+            address(this),
+            address(cTokenCollateral),
+            actualRepayAmount
+        );
 
         /* Revert if borrower collateral token balance < seizeTokens */
-        require(cTokenCollateral.balanceOf(borrower) >= seizeTokens, "LIQUIDATE_SEIZE_TOO_MUCH");
+        require(
+            cTokenCollateral.balanceOf(borrower) >= seizeTokens,
+            "LIQUIDATE_SEIZE_TOO_MUCH"
+        );
 
         // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
         if (address(cTokenCollateral) == address(this)) {
@@ -729,7 +902,13 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         }
 
         /* We emit a LiquidateBorrow event */
-        emit LiquidateBorrow(liquidator, borrower, actualRepayAmount, address(cTokenCollateral), seizeTokens);
+        emit LiquidateBorrow(
+            liquidator,
+            borrower,
+            actualRepayAmount,
+            address(cTokenCollateral),
+            seizeTokens
+        );
         return actualRepayAmount;
     }
 
@@ -741,7 +920,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
      */
-    function seize(address liquidator, address borrower, uint seizeTokens) external nonReentrant {
+    function seize(
+        address liquidator,
+        address borrower,
+        uint256 seizeTokens
+    ) external nonReentrant {
         return seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
     }
 
@@ -754,9 +937,23 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
      */
-    function seizeInternal(address seizerToken, address liquidator, address borrower, uint seizeTokens) internal {
+    function seizeInternal(
+        address seizerToken,
+        address liquidator,
+        address borrower,
+        uint256 seizeTokens
+    ) internal {
         /* Fail if seize not allowed */
-        require(comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens), "Seize is not allowed");
+        require(
+            comptroller.seizeAllowed(
+                address(this),
+                seizerToken,
+                liquidator,
+                borrower,
+                seizeTokens
+            ),
+            "Seize is not allowed"
+        );
 
         /* Fail if borrower = liquidator */
         require(liquidator != borrower, "Can't liquidate your own position");
@@ -766,10 +963,12 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
          *  borrowerTokensNew = accountTokens[borrower] - seizeTokens
          *  liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
          */
-        uint protocolSeizeTokens = seizeTokens * protocolSeizeShareMantissa / 1e18;
-        uint liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
-        uint exchangeRateMantissa = exchangeRateStoredInternal();
-        uint protocolSeizeAmount = (exchangeRateMantissa * protocolSeizeTokens) / 1e18;
+        uint256 protocolSeizeTokens = (seizeTokens *
+            protocolSeizeShareMantissa) / 1e18;
+        uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
+        uint256 exchangeRateMantissa = exchangeRateStoredInternal();
+        uint256 protocolSeizeAmount = (exchangeRateMantissa *
+            protocolSeizeTokens) / 1e18;
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -787,15 +986,17 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         emit ReservesAdded(address(this), protocolSeizeAmount, totalReserves);
     }
 
-
     /*** Admin Functions ***/
 
     /**
-      * @notice Begins transfer of admin rights. The newPendingAdmin must call _acceptAdmin to finalize the transfer.
-      * @dev Admin function to begin change of admin. The newPendingAdmin must call _acceptAdmin to finalize the transfer.
-      * @param newPendingAdmin New pending admin.
-      */
-    function setPendingAdmin(address payable newPendingAdmin) external onlyAdmin(msg.sender) {
+     * @notice Begins transfer of admin rights. The newPendingAdmin must call _acceptAdmin to finalize the transfer.
+     * @dev Admin function to begin change of admin. The newPendingAdmin must call _acceptAdmin to finalize the transfer.
+     * @param newPendingAdmin New pending admin.
+     */
+    function setPendingAdmin(address payable newPendingAdmin)
+        external
+        onlyAdmin(msg.sender)
+    {
         require(newPendingAdmin != address(0), "Zero address");
         address oldPendingAdmin = pendingAdmin;
         pendingAdmin = newPendingAdmin;
@@ -803,9 +1004,9 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
     }
 
     /**
-      * @notice Accepts transfer of admin rights. msg.sender must be pendingAdmin
-      * @dev Admin function for pending admin to accept role and update admin
-      */
+     * @notice Accepts transfer of admin rights. msg.sender must be pendingAdmin
+     * @dev Admin function for pending admin to accept role and update admin
+     */
     function acceptAdmin() external {
         // Check caller is pendingAdmin and pendingAdmin != address(0)
         require(msg.sender == pendingAdmin, "Caller is not a pending admin");
@@ -824,11 +1025,13 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
     }
 
     /**
-      * @notice Sets a new comptroller for the market
-      * @dev Admin function to set a new comptroller
-      */
-    function setController(IController newComptroller) public onlyAdmin(msg.sender) {
-
+     * @notice Sets a new comptroller for the market
+     * @dev Admin function to set a new comptroller
+     */
+    function setController(IController newComptroller)
+        public
+        onlyAdmin(msg.sender)
+    {
         IController oldComptroller = comptroller;
         // Ensure invoke comptroller.isComptroller() returns true
         require(newComptroller.isController(), "marker method returned false");
@@ -838,36 +1041,46 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
     }
 
     /**
-      * @notice accrues interest and sets a new reserve factor for the protocol using _setReserveFactorFresh
-      * @dev Admin function to accrue interest and set a new reserve factor
-      */
-    function setReserveFactor(uint newReserveFactorMantissa) external nonReentrant onlyAdmin(msg.sender) { 
+     * @notice accrues interest and sets a new reserve factor for the protocol using _setReserveFactorFresh
+     * @dev Admin function to accrue interest and set a new reserve factor
+     */
+    function setReserveFactor(uint256 newReserveFactorMantissa)
+        external
+        nonReentrant
+        onlyAdmin(msg.sender)
+    {
         accrueInterest();
         // _setReserveFactorFresh emits reserve-factor-specific logs on errors, so we don't need to.
         return _setReserveFactorFresh(newReserveFactorMantissa);
     }
 
     /**
-      * @notice Sets a new reserve factor for the protocol (*requires fresh interest accrual)
-      * @dev Admin function to set a new reserve factor
-      */
-    function _setReserveFactorFresh(uint newReserveFactorMantissa) internal {
+     * @notice Sets a new reserve factor for the protocol (*requires fresh interest accrual)
+     * @dev Admin function to set a new reserve factor
+     */
+    function _setReserveFactorFresh(uint256 newReserveFactorMantissa) internal {
         // Verify market's block number equals current block number
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
         // Check newReserveFactor <= maxReserveFactor
-        require(newReserveFactorMantissa <= reserveFactorMaxMantissa, "Wrong reserve factor");
+        require(
+            newReserveFactorMantissa <= reserveFactorMaxMantissa,
+            "Wrong reserve factor"
+        );
 
-        uint oldReserveFactorMantissa = reserveFactorMantissa;
+        uint256 oldReserveFactorMantissa = reserveFactorMantissa;
         reserveFactorMantissa = newReserveFactorMantissa;
-        emit NewReserveFactor(oldReserveFactorMantissa, newReserveFactorMantissa);
+        emit NewReserveFactor(
+            oldReserveFactorMantissa,
+            newReserveFactorMantissa
+        );
     }
 
     /**
      * @notice Accrues interest and reduces reserves by transferring from msg.sender
      * @param addAmount Amount of addition to reserves
      */
-    function _addReservesInternal(uint addAmount) internal nonReentrant {
+    function _addReservesInternal(uint256 addAmount) internal nonReentrant {
         accrueInterest();
 
         // _addReservesFresh emits reserve-addition-specific logs on errors, so we don't need to.
@@ -880,9 +1093,9 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param addAmount Amount of addition to reserves
      * @return the actual amount added, net token fees
      */
-    function _addReservesFresh(uint addAmount) internal returns (uint) {
+    function _addReservesFresh(uint256 addAmount) internal returns (uint256) {
         // totalReserves + actualAddAmount
-        uint actualAddAmount;
+        uint256 actualAddAmount;
 
         // We fail gracefully unless market's block number equals current block number
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
@@ -910,12 +1123,15 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         return actualAddAmount;
     }
 
-
     /**
      * @notice Accrues interest and reduces reserves by transferring to admin
      * @param reduceAmount Amount of reduction to reserves
      */
-    function reduceReserves(uint reduceAmount) external nonReentrant onlyAdmin(msg.sender) {
+    function reduceReserves(uint256 reduceAmount)
+        external
+        nonReentrant
+        onlyAdmin(msg.sender)
+    {
         accrueInterest();
         // _reduceReservesFresh emits reserve-reduction-specific logs on errors, so we don't need to.
         return _reduceReservesFresh(reduceAmount);
@@ -926,8 +1142,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev Requires fresh interest accrual
      * @param reduceAmount Amount of reduction to reserves)
      */
-    function _reduceReservesFresh(uint reduceAmount) internal {
-
+    function _reduceReservesFresh(uint256 reduceAmount) internal {
         // We fail gracefully unless market's block number equals current block number
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
@@ -953,7 +1168,10 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev Admin function to accrue interest and update the interest rate model
      * @param newInterestRateModel the new interest rate model to use
      */
-    function setInterestRateModel(IInterestRateModel newInterestRateModel) public onlyAdmin(msg.sender) {
+    function setInterestRateModel(IInterestRateModel newInterestRateModel)
+        public
+        onlyAdmin(msg.sender)
+    {
         accrueInterest();
         // _setInterestRateModelFresh emits interest-rate-model-update-specific logs on errors, so we don't need to.
         _setInterestRateModelFresh(newInterestRateModel);
@@ -964,11 +1182,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev Admin function to update the interest rate model
      * @param newInterestRateModel the new interest rate model to use
      */
-    function _setInterestRateModelFresh(IInterestRateModel newInterestRateModel) internal {
-
+    function _setInterestRateModelFresh(IInterestRateModel newInterestRateModel)
+        internal
+    {
         // Used to store old model for use in the event that is emitted on success
         IInterestRateModel oldInterestRateModel;
-
 
         // We fail gracefully unless market's block number equals current block number
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
@@ -977,13 +1195,19 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         oldInterestRateModel = interestRateModel;
 
         // Ensure invoke newInterestRateModel.isInterestRateModel() returns true
-        require(newInterestRateModel.isInterestRateModel(), "marker method returned false");
+        require(
+            newInterestRateModel.isInterestRateModel(),
+            "marker method returned false"
+        );
 
         // Set the interest rate model to newInterestRateModel
         interestRateModel = newInterestRateModel;
 
         // Emit NewMarketInterestRateModel(oldInterestRateModel, newInterestRateModel)
-        emit NewMarketInterestRateModel(oldInterestRateModel, newInterestRateModel);
+        emit NewMarketInterestRateModel(
+            oldInterestRateModel,
+            newInterestRateModel
+        );
     }
 
     /*** Safe Token ***/
@@ -993,21 +1217,23 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev This excludes the value of the current message, if any
      * @return The quantity of underlying owned by this contract
      */
-    function getCashPrior() internal virtual view returns (uint);
+    function getCashPrior() internal view virtual returns (uint256);
 
     /**
      * @dev Performs a transfer in, reverting upon failure. Returns the amount actually transferred to the protocol, in case of a fee.
      *  This may revert due to insufficient balance or insufficient allowance.
      */
-    function doTransferIn(address from, uint amount) internal virtual returns (uint);
+    function doTransferIn(address from, uint256 amount)
+        internal
+        virtual
+        returns (uint256);
 
     /**
      * @dev Performs a transfer out, ideally returning an explanatory error code upon failure tather than reverting.
      *  If caller has not called checked protocol's balance, may revert due to insufficient cash held in the contract.
      *  If caller has checked protocol's balance, and verified it is >= amount, this should not revert in normal conditions.
      */
-    function doTransferOut(address payable to, uint amount) internal virtual;
-
+    function doTransferOut(address payable to, uint256 amount) internal virtual;
 
     /*** Reentrancy Guard ***/
 

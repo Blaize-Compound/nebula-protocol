@@ -18,11 +18,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     /// @notice The initial COMP index for a market
     uint224 public constant compInitialIndex = 1e36;
     // closeFactorMantissa must be strictly greater than this value
-    uint internal constant closeFactorMinMantissa = 0.05e18; // 0.05
+    uint256 internal constant closeFactorMinMantissa = 0.05e18; // 0.05
     // closeFactorMantissa must not exceed this value
-    uint internal constant closeFactorMaxMantissa = 0.9e18; // 0.9
+    uint256 internal constant closeFactorMaxMantissa = 0.9e18; // 0.9
     // No collateralFactorMantissa may exceed this value
-    uint internal constant collateralFactorMaxMantissa = 0.9e18; // 0.9
+    uint256 internal constant collateralFactorMaxMantissa = 0.9e18; // 0.9
 
     modifier onlyAdmin(address _caller) {
         require(_caller == admin, "Caller is not an admin");
@@ -40,7 +40,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param account The address of the account to pull assets for
      * @return A dynamic list with the assets the account has entered
      */
-    function getAssetsIn(address account) external view returns (ICToken[] memory) {
+    function getAssetsIn(address account)
+        external
+        view
+        returns (ICToken[] memory)
+    {
         ICToken[] memory assetsIn = accountAssets[account];
 
         return assetsIn;
@@ -52,7 +56,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param cToken The cToken to check
      * @return True if the account is in the asset, otherwise false.
      */
-    function checkMembership(address account, ICToken cToken) external view returns (bool) {
+    function checkMembership(address account, ICToken cToken)
+        external
+        view
+        returns (bool)
+    {
         return accountMembership[address(cToken)][account];
     }
 
@@ -61,7 +69,7 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param cTokens The list of addresses of the cToken markets to be enabled
      */
     function enterMarkets(address[] memory cTokens) public {
-        for (uint i = 0; i < cTokens.length; i++) {
+        for (uint256 i = 0; i < cTokens.length; i++) {
             ICToken cToken = ICToken(cTokens[i]);
 
             addToMarketInternal(cToken, msg.sender);
@@ -101,20 +109,28 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param cTokenAddress The address of the asset to be removed
      */
     function exitMarket(address cTokenAddress) external {
-        ICToken cToken = CToken(cTokenAddress);
+        ICToken cToken = ICToken(cTokenAddress);
         /* Get sender tokensHeld and amountOwed underlying from the cToken */
-        (uint tokensHeld, uint amountOwed, ) = cToken.getAccountSnapshot(msg.sender);
+        (uint256 tokensHeld, uint256 amountOwed, ) = cToken.getAccountSnapshot(
+            msg.sender
+        );
 
         /* Fail if the sender has a borrow balance */
         require(amountOwed == 0, "User has a borrow balance");
 
         /* Fail if the sender is not permitted to redeem all of their tokens */
-        require(redeemAllowedInternal(cTokenAddress, msg.sender, tokensHeld), "User is not allowed to redeem");
+        require(
+            redeemAllowedInternal(cTokenAddress, msg.sender, tokensHeld),
+            "User is not allowed to redeem"
+        );
 
         Market storage marketToExit = markets[address(cToken)];
 
         /* Return true if the sender is not already in  the market */
-        require(accountMembership[address(cToken)][msg.sender], "User is not in market");
+        require(
+            accountMembership[address(cToken)][msg.sender],
+            "User is not in market"
+        );
 
         /* Set cToken account membership to false */
         accountMembership[address(cToken)][msg.sender] = false;
@@ -122,9 +138,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         /* Delete cToken from the account s list of assets */
         // load into memory for faster iteration
         ICToken[] memory userAssetList = accountAssets[msg.sender];
-        uint len = userAssetList.length;
-        uint assetIndex = len;
-        for (uint i = 0; i < len; i++) {
+        uint256 len = userAssetList.length;
+        uint256 assetIndex = len;
+        for (uint256 i = 0; i < len; i++) {
             if (userAssetList[i] == cToken) {
                 assetIndex = i;
                 break;
@@ -150,7 +166,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param minter The account which would get the minted tokens
      * @param mintAmount The amount of underlying being supplied to the market in exchange for tokens
      */
-    function mintAllowed(address cToken, address minter, uint mintAmount) external returns (bool){
+    function mintAllowed(
+        address cToken,
+        address minter,
+        uint256 mintAmount
+    ) external returns (bool) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!mintGuardianPaused[cToken], "mint is paused");
 
@@ -174,7 +194,12 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param actualMintAmount The amount of the underlying asset being minted
      * @param mintTokens The number of tokens being minted
      */
-    function mintVerify(address cToken, address minter, uint actualMintAmount, uint mintTokens) external {
+    function mintVerify(
+        address cToken,
+        address minter,
+        uint256 actualMintAmount,
+        uint256 mintTokens
+    ) external {
         // Shh - currently unused
         cToken;
         minter;
@@ -193,8 +218,15 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param redeemer The account which would redeem the tokens
      * @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
      */
-    function redeemAllowed(address cToken, address redeemer, uint redeemTokens) external returns (bool) {
-        require(redeemAllowedInternal(cToken, redeemer, redeemTokens), "Redeem is not allowed");
+    function redeemAllowed(
+        address cToken,
+        address redeemer,
+        uint256 redeemTokens
+    ) external returns (bool) {
+        require(
+            redeemAllowedInternal(cToken, redeemer, redeemTokens),
+            "Redeem is not allowed"
+        );
 
         // Keep the flywheel moving
         updateCompSupplyIndex(cToken);
@@ -203,7 +235,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         return true;
     }
 
-    function redeemAllowedInternal(address cToken, address redeemer, uint redeemTokens) internal view returns (bool) {
+    function redeemAllowedInternal(
+        address cToken,
+        address redeemer,
+        uint256 redeemTokens
+    ) internal view returns (bool) {
         if (!markets[cToken].isListed) {
             return false;
         }
@@ -214,7 +250,12 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         }
 
         /* Otherwise, perform a hypothetical liquidity check to guard against shortfall */
-        (, uint shortfall) = getHypotheticalAccountLiquidityInternal(redeemer, ICToken(cToken), redeemTokens, 0);
+        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+            redeemer,
+            ICToken(cToken),
+            redeemTokens,
+            0
+        );
         if (shortfall > 0) {
             return false;
         }
@@ -229,7 +270,12 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param redeemAmount The amount of the underlying asset being redeemed
      * @param redeemTokens The number of tokens being redeemed
      */
-    function redeemVerify(address cToken, address redeemer, uint redeemAmount, uint redeemTokens) external {
+    function redeemVerify(
+        address cToken,
+        address redeemer,
+        uint256 redeemAmount,
+        uint256 redeemTokens
+    ) external {
         // Shh - currently unused
         cToken;
         redeemer;
@@ -246,7 +292,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param borrower The account which would borrow the asset
      * @param borrowAmount The amount of underlying the account would borrow
      */
-    function borrowAllowed(address cToken, address borrower, uint borrowAmount) external returns (bool) {
+    function borrowAllowed(
+        address cToken,
+        address borrower,
+        uint256 borrowAmount
+    ) external returns (bool) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!borrowGuardianPaused[cToken], "borrow is paused");
         require(markets[cToken].isListed, "Market is not listed");
@@ -262,21 +312,29 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             assert(accountMembership[address(cToken)][borrower]);
         }
 
-        require(oracle.getUnderlyingPrice(ICToken(cToken)) != 0, "Failed to get underlying price");
+        require(
+            oracle.getUnderlyingPrice(ICToken(cToken)) != 0,
+            "Failed to get underlying price"
+        );
 
-        uint borrowCap = borrowCaps[cToken];
+        uint256 borrowCap = borrowCaps[cToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
         if (borrowCap != 0) {
-            uint totalBorrows = ICToken(cToken).totalBorrows();
-            uint nextTotalBorrows = totalBorrows + borrowAmount;
+            uint256 totalBorrows = ICToken(cToken).totalBorrows();
+            uint256 nextTotalBorrows = totalBorrows + borrowAmount;
             require(nextTotalBorrows < borrowCap, "market borrow cap reached");
         }
 
-        (, uint shortfall) = getHypotheticalAccountLiquidityInternal(borrower, ICToken(cToken), 0, borrowAmount);
+        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+            borrower,
+            ICToken(cToken),
+            0,
+            borrowAmount
+        );
         require(shortfall == 0, "Insufficient liquidity");
 
         // Keep the flywheel moving
-        uint borrowIndex = ICToken(cToken).borrowIndex();
+        uint256 borrowIndex = ICToken(cToken).borrowIndex();
         updateCompBorrowIndex(cToken, borrowIndex);
         distributeBorrowerComp(cToken, borrower, borrowIndex);
 
@@ -289,7 +347,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param borrower The address borrowing the underlying
      * @param borrowAmount The amount of the underlying asset requested to borrow
      */
-    function borrowVerify(address cToken, address borrower, uint borrowAmount) external {
+    function borrowVerify(
+        address cToken,
+        address borrower,
+        uint256 borrowAmount
+    ) external {
         // Shh - currently unused
         cToken;
         borrower;
@@ -312,7 +374,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         address cToken,
         address payer,
         address borrower,
-        uint repayAmount) external returns (bool) {
+        uint256 repayAmount
+    ) external returns (bool) {
         // Shh - currently unused
         payer;
         borrower;
@@ -321,7 +384,7 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         require(markets[cToken].isListed, "Market is not listed");
 
         // Keep the flywheel moving
-        uint borrowIndex = ICToken(cToken).borrowIndex();
+        uint256 borrowIndex = ICToken(cToken).borrowIndex();
         updateCompBorrowIndex(cToken, borrowIndex);
         distributeBorrowerComp(cToken, borrower, borrowIndex);
 
@@ -339,8 +402,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         address cToken,
         address payer,
         address borrower,
-        uint actualRepayAmount,
-        uint borrowerIndex) external {
+        uint256 actualRepayAmount,
+        uint256 borrowerIndex
+    ) external {
         // Shh - currently unused
         cToken;
         payer;
@@ -367,25 +431,35 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         address cTokenCollateral,
         address liquidator,
         address borrower,
-        uint repayAmount) external returns (bool) {
+        uint256 repayAmount
+    ) external returns (bool) {
         // Shh - currently unused
         liquidator;
 
-        require(markets[cTokenBorrowed].isListed && markets[cTokenCollateral].isListed, "Market is not listed");
+        require(
+            markets[cTokenBorrowed].isListed &&
+                markets[cTokenCollateral].isListed,
+            "Market is not listed"
+        );
 
-        uint borrowBalance = ICToken(cTokenBorrowed).borrowBalanceStored(borrower);
+        uint256 borrowBalance = ICToken(cTokenBorrowed).borrowBalanceStored(
+            borrower
+        );
 
         /* allow accounts to be liquidated if the market is deprecated */
         if (isDeprecated(ICToken(cTokenBorrowed))) {
-            require(borrowBalance >= repayAmount, "Can not repay more than the total borrow");
+            require(
+                borrowBalance >= repayAmount,
+                "Can not repay more than the total borrow"
+            );
         } else {
             /* The borrower must have shortfall in order to be liquidatable */
-            ( , uint shortfall) = getAccountLiquidityInternal(borrower);
+            (, uint256 shortfall) = getAccountLiquidityInternal(borrower);
 
             require(shortfall != 0, "Insufficient shortfall");
 
             /* The liquidator may not repay more than what is allowed by the closeFactor */
-            uint maxClose = (closeFactorMantissa * borrowBalance) / 1e18;
+            uint256 maxClose = (closeFactorMantissa * borrowBalance) / 1e18;
             require(repayAmount <= maxClose, "Too much repay");
         }
 
@@ -405,8 +479,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         address cTokenCollateral,
         address liquidator,
         address borrower,
-        uint actualRepayAmount,
-        uint seizeTokens) external {
+        uint256 actualRepayAmount,
+        uint256 seizeTokens
+    ) external {
         // Shh - currently unused
         cTokenBorrowed;
         cTokenCollateral;
@@ -434,14 +509,23 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         address cTokenBorrowed,
         address liquidator,
         address borrower,
-        uint seizeTokens) external returns (bool) {
+        uint256 seizeTokens
+    ) external returns (bool) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!seizeGuardianPaused, "seize is paused");
 
         // Shh - currently unused
         seizeTokens;
-        require(markets[cTokenCollateral].isListed && markets[cTokenBorrowed].isListed, "Market is not listed");
-        require(ICToken(cTokenCollateral).comptroller() == ICToken(cTokenBorrowed).comptroller(), "Controller mismatch");
+        require(
+            markets[cTokenCollateral].isListed &&
+                markets[cTokenBorrowed].isListed,
+            "Market is not listed"
+        );
+        require(
+            ICToken(cTokenCollateral).comptroller() ==
+                ICToken(cTokenBorrowed).comptroller(),
+            "Controller mismatch"
+        );
 
         // Keep the flywheel moving
         updateCompSupplyIndex(cTokenCollateral);
@@ -464,7 +548,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         address cTokenBorrowed,
         address liquidator,
         address borrower,
-        uint seizeTokens) external {
+        uint256 seizeTokens
+    ) external {
         // Shh - currently unused
         cTokenCollateral;
         cTokenBorrowed;
@@ -486,7 +571,12 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param transferTokens The number of cTokens to transfer
      * @return true if the transfer is allowed, false otherwise
      */
-    function transferAllowed(address cToken, address src, address dst, uint transferTokens) external returns (bool) {
+    function transferAllowed(
+        address cToken,
+        address src,
+        address dst,
+        uint256 transferTokens
+    ) external returns (bool) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!transferGuardianPaused, "transfer is paused");
 
@@ -510,7 +600,12 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param dst The account which receives the tokens
      * @param transferTokens The number of cTokens to transfer
      */
-    function transferVerify(address cToken, address src, address dst, uint transferTokens) external {
+    function transferVerify(
+        address cToken,
+        address src,
+        address dst,
+        uint256 transferTokens
+    ) external {
         // Shh - currently unused
         cToken;
         src;
@@ -531,8 +626,20 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
                 account liquidity in excess of collateral requirements,
      *          account shortfall below collateral requirements)
      */
-    function getAccountLiquidity(address account) public view returns (uint, uint) {
-        (uint liquidity, uint shortfall) = getHypotheticalAccountLiquidityInternal(account, CToken(address(0)), 0, 0);
+    function getAccountLiquidity(address account)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        (
+            uint256 liquidity,
+            uint256 shortfall
+        ) = getHypotheticalAccountLiquidityInternal(
+                account,
+                CToken(address(0)),
+                0,
+                0
+            );
 
         return (liquidity, shortfall);
     }
@@ -543,8 +650,18 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
                 account liquidity in excess of collateral requirements,
      *          account shortfall below collateral requirements)
      */
-    function getAccountLiquidityInternal(address account) internal view returns (uint, uint) {
-        return getHypotheticalAccountLiquidityInternal(account, ICToken(address(0)), 0, 0);
+    function getAccountLiquidityInternal(address account)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        return
+            getHypotheticalAccountLiquidityInternal(
+                account,
+                ICToken(address(0)),
+                0,
+                0
+            );
     }
 
     /**
@@ -560,9 +677,18 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     function getHypotheticalAccountLiquidity(
         address account,
         address cTokenModify,
-        uint redeemTokens,
-        uint borrowAmount) public view returns (uint, uint) {
-        (uint liquidity, uint shortfall) = getHypotheticalAccountLiquidityInternal(account, ICToken(cTokenModify), redeemTokens, borrowAmount);
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    ) public view returns (uint256, uint256) {
+        (
+            uint256 liquidity,
+            uint256 shortfall
+        ) = getHypotheticalAccountLiquidityInternal(
+                account,
+                ICToken(cTokenModify),
+                redeemTokens,
+                borrowAmount
+            );
         return (liquidity, shortfall);
     }
 
@@ -581,26 +707,32 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     function getHypotheticalAccountLiquidityInternal(
         address account,
         ICToken cTokenModify,
-        uint redeemTokens,
-        uint borrowAmount) internal view returns (uint, uint) {
-
-        uint sumCollateral;
-        uint sumBorrowPlusEffects;
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    ) internal view returns (uint256, uint256) {
+        uint256 sumCollateral;
+        uint256 sumBorrowPlusEffects;
 
         // For each asset the account is in
         ICToken[] memory assets = accountAssets[account];
-        for (uint i = 0; i < assets.length; i++) {
+        for (uint256 i = 0; i < assets.length; i++) {
             ICToken asset = assets[i];
 
             // Read the balances and exchange rate from the cToken
-            (uint cTokenBalance, uint borrowBalance, uint exchangeRateMantissa) = asset.getAccountSnapshot(account);
+            (
+                uint256 cTokenBalance,
+                uint256 borrowBalance,
+                uint256 exchangeRateMantissa
+            ) = asset.getAccountSnapshot(account);
 
             // Get the normalized price of the asset
-            uint oraclePrice = oracle.getUnderlyingPrice(asset);
+            uint256 oraclePrice = oracle.getUnderlyingPrice(asset);
             require(oraclePrice != 0, "Failed to get price");
 
             // Pre-compute a conversion factor from tokens -> ether (normalized price value)
-            uint tokensToDenom = (((markets[address(asset)].collateralFactorMantissa * exchangeRateMantissa) / 1e18) * oraclePrice) / 1e18;
+            uint256 tokensToDenom = (((markets[address(asset)]
+                .collateralFactorMantissa * exchangeRateMantissa) / 1e18) *
+                oraclePrice) / 1e18;
 
             // sumCollateral += tokensToDenom * cTokenBalance
             sumCollateral += (tokensToDenom * cTokenBalance) / 1e18;
@@ -635,11 +767,22 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param actualRepayAmount The amount of cTokenBorrowed underlying to convert into cTokenCollateral tokens
      * @return (number of cTokenCollateral tokens to be seized in a liquidation)
      */
-    function liquidateCalculateSeizeTokens(address cTokenBorrowed, address cTokenCollateral, uint actualRepayAmount) external view returns (uint) {
+    function liquidateCalculateSeizeTokens(
+        address cTokenBorrowed,
+        address cTokenCollateral,
+        uint256 actualRepayAmount
+    ) external view returns (uint256) {
         /* Read oracle prices for borrowed and collateral markets */
-        uint priceBorrowedMantissa = oracle.getUnderlyingPrice(CToken(cTokenBorrowed));
-        uint priceCollateralMantissa = oracle.getUnderlyingPrice(CToken(cTokenCollateral));
-        require(priceBorrowedMantissa != 0 && priceCollateralMantissa != 0, "Failed to get price");
+        uint256 priceBorrowedMantissa = oracle.getUnderlyingPrice(
+            CToken(cTokenBorrowed)
+        );
+        uint256 priceCollateralMantissa = oracle.getUnderlyingPrice(
+            CToken(cTokenCollateral)
+        );
+        require(
+            priceBorrowedMantissa != 0 && priceCollateralMantissa != 0,
+            "Failed to get price"
+        );
 
         /*
          * Get the exchange rate and calculate the number of collateral tokens to seize:
@@ -647,13 +790,16 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
          *  seizeTokens = seizeAmount / exchangeRate
          *   = actualRepayAmount * (liquidationIncentive * priceBorrowed) / (priceCollateral * exchangeRate)
          */
-        uint exchangeRateMantissa = ICToken(cTokenCollateral).exchangeRateStored(); // Note: reverts on error
-        uint seizeTokens;
-        uint numerator;
-        uint denominator;
-        uint ratio;
+        uint256 exchangeRateMantissa = ICToken(cTokenCollateral)
+            .exchangeRateStored(); // Note: reverts on error
+        uint256 seizeTokens;
+        uint256 numerator;
+        uint256 denominator;
+        uint256 ratio;
 
-        numerator = (liquidationIncentiveMantissa * priceBorrowedMantissa) / 1e18;
+        numerator =
+            (liquidationIncentiveMantissa * priceBorrowedMantissa) /
+            1e18;
         denominator = (priceCollateralMantissa * exchangeRateMantissa) / 1e18;
         ratio = (numerator * 1e18) / denominator;
 
@@ -665,74 +811,104 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     /*** Admin Functions ***/
 
     /**
-      * @notice Sets a new price oracle for the comptroller
-      * @dev Admin function to set a new price oracle
-      */
-    function setPriceOracle(IPriceOracle newOracle) public onlyAdmin(msg.sender) {
+     * @notice Sets a new price oracle for the comptroller
+     * @dev Admin function to set a new price oracle
+     */
+    function setPriceOracle(IPriceOracle newOracle)
+        public
+        onlyAdmin(msg.sender)
+    {
         IPriceOracle oldOracle = oracle;
         oracle = newOracle;
         emit NewPriceOracle(oldOracle, newOracle);
     }
 
     /**
-      * @notice Sets the closeFactor used when liquidating borrows
-      * @dev Admin function to set closeFactor
-      * @param newCloseFactorMantissa New close factor, scaled by 1e18
-      */
-    function setCloseFactor(uint newCloseFactorMantissa) external onlyAdmin(msg.sender) {
-        uint oldCloseFactorMantissa = closeFactorMantissa;
+     * @notice Sets the closeFactor used when liquidating borrows
+     * @dev Admin function to set closeFactor
+     * @param newCloseFactorMantissa New close factor, scaled by 1e18
+     */
+    function setCloseFactor(uint256 newCloseFactorMantissa)
+        external
+        onlyAdmin(msg.sender)
+    {
+        uint256 oldCloseFactorMantissa = closeFactorMantissa;
         closeFactorMantissa = newCloseFactorMantissa;
         emit NewCloseFactor(oldCloseFactorMantissa, closeFactorMantissa);
     }
 
     /**
-      * @notice Sets the collateralFactor for a market
-      * @dev Admin function to set per-market collateralFactor
-      * @param cToken The market to set the factor on
-      * @param newCollateralFactorMantissa The new collateral factor, scaled by 1e18
-      */
-    function setCollateralFactor(ICToken cToken, uint newCollateralFactorMantissa) external onlyAdmin(msg.sender) {
+     * @notice Sets the collateralFactor for a market
+     * @dev Admin function to set per-market collateralFactor
+     * @param cToken The market to set the factor on
+     * @param newCollateralFactorMantissa The new collateral factor, scaled by 1e18
+     */
+    function setCollateralFactor(
+        ICToken cToken,
+        uint256 newCollateralFactorMantissa
+    ) external onlyAdmin(msg.sender) {
         // Verify market is listed
         Market storage market = markets[address(cToken)];
         require(market.isListed, "Market is not listed");
 
         // Check collateral factor <= 0.9
-        require(newCollateralFactorMantissa <= collateralFactorMaxMantissa, "Collateral factor exceeds maximum");
+        require(
+            newCollateralFactorMantissa <= collateralFactorMaxMantissa,
+            "Collateral factor exceeds maximum"
+        );
 
         // If collateral factor != 0, fail if price == 0
-        require(newCollateralFactorMantissa == 0 || oracle.getUnderlyingPrice(cToken) != 0, "Failed to get price");
+        require(
+            newCollateralFactorMantissa == 0 ||
+                oracle.getUnderlyingPrice(cToken) != 0,
+            "Failed to get price"
+        );
 
         // Set markets collateral factor to new collateral factor, remember old value
-        uint oldCollateralFactorMantissa = market.collateralFactorMantissa;
+        uint256 oldCollateralFactorMantissa = market.collateralFactorMantissa;
         market.collateralFactorMantissa = newCollateralFactorMantissa;
 
         // Emit event with asset, old collateral factor, and new collateral factor
-        emit NewCollateralFactor(cToken, oldCollateralFactorMantissa, newCollateralFactorMantissa);
+        emit NewCollateralFactor(
+            cToken,
+            oldCollateralFactorMantissa,
+            newCollateralFactorMantissa
+        );
     }
 
     /**
-      * @notice Sets liquidationIncentive
-      * @dev Admin function to set liquidationIncentive
-      * @param newLiquidationIncentiveMantissa New liquidationIncentive scaled by 1e18
-      */
-    function _setLiquidationIncentive(uint newLiquidationIncentiveMantissa) external onlyAdmin(msg.sender) {
-        uint oldLiquidationIncentiveMantissa = liquidationIncentiveMantissa;
+     * @notice Sets liquidationIncentive
+     * @dev Admin function to set liquidationIncentive
+     * @param newLiquidationIncentiveMantissa New liquidationIncentive scaled by 1e18
+     */
+    function _setLiquidationIncentive(uint256 newLiquidationIncentiveMantissa)
+        external
+        onlyAdmin(msg.sender)
+    {
+        uint256 oldLiquidationIncentiveMantissa = liquidationIncentiveMantissa;
         liquidationIncentiveMantissa = newLiquidationIncentiveMantissa;
-        emit NewLiquidationIncentive(oldLiquidationIncentiveMantissa, newLiquidationIncentiveMantissa);
+        emit NewLiquidationIncentive(
+            oldLiquidationIncentiveMantissa,
+            newLiquidationIncentiveMantissa
+        );
     }
 
     /**
-      * @notice Add the market to the markets mapping and set it as listed
-      * @dev Admin function to set isListed and add support for the market
-      * @param cToken The address of the market (token) to list
-      */
+     * @notice Add the market to the markets mapping and set it as listed
+     * @dev Admin function to set isListed and add support for the market
+     * @param cToken The address of the market (token) to list
+     */
     function supportMarket(ICToken cToken) external onlyAdmin(msg.sender) {
         require(!markets[address(cToken)].isListed, "Market is already listed");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
         // Note that isComped is not in active use anymore
-        markets[address(cToken)] = Market({isListed: true, isComped: false, collateralFactorMantissa: 0});
+        markets[address(cToken)] = Market({
+            isListed: true,
+            isComped: false,
+            collateralFactorMantissa: 0
+        });
 
         _addMarketInternal(address(cToken));
         _initializeMarket(address(cToken));
@@ -741,14 +917,13 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     }
 
     function _addMarketInternal(address cToken) internal {
-        for (uint i = 0; i < allMarkets.length; i ++) {
+        for (uint256 i = 0; i < allMarkets.length; i++) {
             require(allMarkets[i] != ICToken(cToken), "market already added");
         }
         allMarkets.push(ICToken(cToken));
     }
 
     function _initializeMarket(address cToken) internal {
-
         CompMarketState storage supplyState = compSupplyState[cToken];
         CompMarketState storage borrowState = compBorrowState[cToken];
 
@@ -768,25 +943,33 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         /*
          * Update market state block numbers
          */
-         supplyState.block = borrowState.block = getBlockNumber();
+        supplyState.block = borrowState.block = getBlockNumber();
     }
 
-
     /**
-      * @notice Set the given borrow caps for the given cToken markets. Borrowing that brings total borrows to or above borrow cap will revert.
-      * @dev Admin or borrowCapGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing.
-      * @param cTokens The addresses of the markets (tokens) to change the borrow caps for
-      * @param newBorrowCaps The new borrow cap values in underlying to be set. A value of 0 corresponds to unlimited borrowing.
-      */
-    function setMarketBorrowCaps(CToken[] calldata cTokens, uint[] calldata newBorrowCaps) external {
-    	require(msg.sender == admin || msg.sender == borrowCapGuardian, "only admin or borrow cap guardian can set borrow caps"); 
+     * @notice Set the given borrow caps for the given cToken markets. Borrowing that brings total borrows to or above borrow cap will revert.
+     * @dev Admin or borrowCapGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing.
+     * @param cTokens The addresses of the markets (tokens) to change the borrow caps for
+     * @param newBorrowCaps The new borrow cap values in underlying to be set. A value of 0 corresponds to unlimited borrowing.
+     */
+    function setMarketBorrowCaps(
+        CToken[] calldata cTokens,
+        uint256[] calldata newBorrowCaps
+    ) external {
+        require(
+            msg.sender == admin || msg.sender == borrowCapGuardian,
+            "only admin or borrow cap guardian can set borrow caps"
+        );
 
-        uint numMarkets = cTokens.length;
-        uint numBorrowCaps = newBorrowCaps.length;
+        uint256 numMarkets = cTokens.length;
+        uint256 numBorrowCaps = newBorrowCaps.length;
 
-        require(numMarkets != 0 && numMarkets == numBorrowCaps, "invalid input");
+        require(
+            numMarkets != 0 && numMarkets == numBorrowCaps,
+            "invalid input"
+        );
 
-        for(uint i = 0; i < numMarkets; i++) {
+        for (uint256 i = 0; i < numMarkets; i++) {
             borrowCaps[address(cTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(cTokens[i], newBorrowCaps[i]);
         }
@@ -796,7 +979,10 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @notice Admin function to change the Borrow Cap Guardian
      * @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
      */
-    function setBorrowCapGuardian(address newBorrowCapGuardian) external onlyAdmin(msg.sender) {
+    function setBorrowCapGuardian(address newBorrowCapGuardian)
+        external
+        onlyAdmin(msg.sender)
+    {
         address oldBorrowCapGuardian = borrowCapGuardian;
         borrowCapGuardian = newBorrowCapGuardian;
         emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
@@ -806,15 +992,24 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @notice Admin function to change the Pause Guardian
      * @param newPauseGuardian The address of the new Pause Guardian
      */
-    function setPauseGuardian(address newPauseGuardian) external onlyAdmin(msg.sender) {
+    function setPauseGuardian(address newPauseGuardian)
+        external
+        onlyAdmin(msg.sender)
+    {
         address oldPauseGuardian = pauseGuardian;
         pauseGuardian = newPauseGuardian;
         emit NewPauseGuardian(oldPauseGuardian, pauseGuardian);
     }
 
     function setMintPaused(CToken cToken, bool state) public returns (bool) {
-        require(markets[address(cToken)].isListed, "cannot pause a market that is not listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(
+            markets[address(cToken)].isListed,
+            "cannot pause a market that is not listed"
+        );
+        require(
+            msg.sender == pauseGuardian || msg.sender == admin,
+            "only pause guardian and admin can pause"
+        );
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         mintGuardianPaused[address(cToken)] = state;
@@ -823,8 +1018,14 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     }
 
     function setBorrowPaused(ICToken cToken, bool state) public returns (bool) {
-        require(markets[address(cToken)].isListed, "cannot pause a market that is not listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(
+            markets[address(cToken)].isListed,
+            "cannot pause a market that is not listed"
+        );
+        require(
+            msg.sender == pauseGuardian || msg.sender == admin,
+            "only pause guardian and admin can pause"
+        );
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         borrowGuardianPaused[address(cToken)] = state;
@@ -833,7 +1034,10 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     }
 
     function setTransferPaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(
+            msg.sender == pauseGuardian || msg.sender == admin,
+            "only pause guardian and admin can pause"
+        );
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         transferGuardianPaused = state;
@@ -842,7 +1046,10 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     }
 
     function setSeizePaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(
+            msg.sender == pauseGuardian || msg.sender == admin,
+            "only pause guardian and admin can pause"
+        );
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         seizeGuardianPaused = state;
@@ -851,7 +1058,10 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     }
 
     function _become(Unitroller unitroller) public {
-        require(msg.sender == unitroller.admin(), "only unitroller admin can change brains");
+        require(
+            msg.sender == unitroller.admin(),
+            "only unitroller admin can change brains"
+        );
         require(unitroller.acceptImplementation(), "change not authorized");
     }
 
@@ -870,7 +1080,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param supplySpeed New supply-side COMP speed for market
      * @param borrowSpeed New borrow-side COMP speed for market
      */
-    function setCompSpeedInternal(ICToken cToken, uint supplySpeed, uint borrowSpeed) internal {
+    function setCompSpeedInternal(
+        ICToken cToken,
+        uint256 supplySpeed,
+        uint256 borrowSpeed
+    ) internal {
         Market storage market = markets[address(cToken)];
         require(market.isListed, "comp market is not listed");
 
@@ -904,13 +1118,15 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      */
     function updateCompSupplyIndex(address cToken) internal {
         CompMarketState storage supplyState = compSupplyState[cToken];
-        uint supplySpeed = compSupplySpeeds[cToken];
-        uint blockNumber = getBlockNumber();
-        uint deltaBlocks = blockNumber - supplyState.block;
+        uint256 supplySpeed = compSupplySpeeds[cToken];
+        uint256 blockNumber = getBlockNumber();
+        uint256 deltaBlocks = blockNumber - supplyState.block;
         if (deltaBlocks > 0 && supplySpeed > 0) {
-            uint supplyTokens = ICToken(cToken).totalSupply();
-            uint compAccrued = deltaBlocks * supplySpeed;
-            uint ratio = supplyTokens > 0 ? (compAccrued * 1e18) / supplyTokens : 0;
+            uint256 supplyTokens = ICToken(cToken).totalSupply();
+            uint256 compAccrued = deltaBlocks * supplySpeed;
+            uint256 ratio = supplyTokens > 0
+                ? (compAccrued * 1e18) / supplyTokens
+                : 0;
             supplyState.index += ratio;
             supplyState.block = blockNumber;
         } else if (deltaBlocks > 0) {
@@ -923,15 +1139,20 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param cToken The market whose borrow index to update
      * @dev Index is a cumulative sum of the COMP per cToken accrued.
      */
-    function updateCompBorrowIndex(address cToken, uint marketBorrowIndex) internal {
+    function updateCompBorrowIndex(address cToken, uint256 marketBorrowIndex)
+        internal
+    {
         CompMarketState storage borrowState = compBorrowState[cToken];
-        uint borrowSpeed = compBorrowSpeeds[cToken];
-        uint blockNumber = getBlockNumber();
-        uint deltaBlocks = blockNumber - borrowState.block;
+        uint256 borrowSpeed = compBorrowSpeeds[cToken];
+        uint256 blockNumber = getBlockNumber();
+        uint256 deltaBlocks = blockNumber - borrowState.block;
         if (deltaBlocks > 0 && borrowSpeed > 0) {
-            uint borrowAmount = ICToken(cToken).totalBorrows() / marketBorrowIndex;
-            uint compAccrued = deltaBlocks * borrowSpeed;
-            uint ratio = borrowAmount > 0 ? (compAccrued * 1e18) / borrowAmount : 0;
+            uint256 borrowAmount = ICToken(cToken).totalBorrows() /
+                marketBorrowIndex;
+            uint256 compAccrued = deltaBlocks * borrowSpeed;
+            uint256 ratio = borrowAmount > 0
+                ? (compAccrued * 1e18) / borrowAmount
+                : 0;
             borrowState.index += ratio;
             borrowState.block = blockNumber;
         } else if (deltaBlocks > 0) {
@@ -950,8 +1171,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         // - We really dont want to call an external contract as thats quite expensive.
 
         CompMarketState storage supplyState = compSupplyState[cToken];
-        uint supplyIndex = supplyState.index;
-        uint supplierIndex = compSupplierIndex[cToken][supplier];
+        uint256 supplyIndex = supplyState.index;
+        uint256 supplierIndex = compSupplierIndex[cToken][supplier];
 
         // Update suppliers index to the current index since we are distributing accrued COMP
         compSupplierIndex[cToken][supplier] = supplyIndex;
@@ -964,15 +1185,20 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         }
 
         // Calculate change in the cumulative sum of the COMP per cToken accrued
-        uint deltaIndex = supplyIndex - supplierIndex;
+        uint256 deltaIndex = supplyIndex - supplierIndex;
 
-        uint supplierTokens = ICToken(cToken).balanceOf(supplier);
+        uint256 supplierTokens = ICToken(cToken).balanceOf(supplier);
 
         // Calculate COMP accrued: cTokenAmount * accruedPerCToken
-        uint supplierDelta = supplierTokens * deltaIndex;
+        uint256 supplierDelta = supplierTokens * deltaIndex;
         compAccrued[supplier] += supplierDelta;
 
-        emit DistributedSupplierComp(ICToken(cToken), supplier, supplierDelta, supplyIndex);
+        emit DistributedSupplierComp(
+            ICToken(cToken),
+            supplier,
+            supplierDelta,
+            supplyIndex
+        );
     }
 
     /**
@@ -981,14 +1207,18 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param cToken The market in which the borrower is interacting
      * @param borrower The address of the borrower to distribute COMP to
      */
-    function distributeBorrowerComp(address cToken, address borrower, uint marketBorrowIndex) internal {
+    function distributeBorrowerComp(
+        address cToken,
+        address borrower,
+        uint256 marketBorrowIndex
+    ) internal {
         // TODO: Dont distribute supplier COMP if the user is not in the borrower market.
         // This check should be as gas efficient as possible as distributeBorrowerComp is called in many places.
         // - We really dont want to call an external contract as thats quite expensive.
 
         CompMarketState storage borrowState = compBorrowState[cToken];
-        uint borrowIndex = borrowState.index;
-        uint borrowerIndex = compBorrowerIndex[cToken][borrower];
+        uint256 borrowIndex = borrowState.index;
+        uint256 borrowerIndex = compBorrowerIndex[cToken][borrower];
 
         // Update borrowerss index to the current index since we are distributing accrued COMP
         compBorrowerIndex[cToken][borrower] = borrowIndex;
@@ -1001,15 +1231,21 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         }
 
         // Calculate change in the cumulative sum of the COMP per borrowed unit accrued
-        uint deltaIndex = borrowIndex - borrowerIndex;
+        uint256 deltaIndex = borrowIndex - borrowerIndex;
 
-        uint borrowerAmount = ICToken(cToken).borrowBalanceStored(borrower) / marketBorrowIndex;
-        
+        uint256 borrowerAmount = ICToken(cToken).borrowBalanceStored(borrower) /
+            marketBorrowIndex;
+
         // Calculate COMP accrued: cTokenAmount * accruedPerBorrowedUnit
-        uint borrowerDelta = borrowerAmount * deltaIndex;
+        uint256 borrowerDelta = borrowerAmount * deltaIndex;
         compAccrued[borrower] += borrowerDelta;
 
-        emit DistributedBorrowerComp(ICToken(cToken), borrower, borrowerDelta, borrowIndex);
+        emit DistributedBorrowerComp(
+            ICToken(cToken),
+            borrower,
+            borrowerDelta,
+            borrowIndex
+        );
     }
 
     /**
@@ -1017,11 +1253,11 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param contributor The address to calculate contributor rewards for
      */
     function updateContributorRewards(address contributor) public {
-        uint compSpeed = compContributorSpeeds[contributor];
-        uint blockNumber = getBlockNumber();
-        uint deltaBlocks = blockNumber - lastContributorBlock[contributor];
+        uint256 compSpeed = compContributorSpeeds[contributor];
+        uint256 blockNumber = getBlockNumber();
+        uint256 deltaBlocks = blockNumber - lastContributorBlock[contributor];
         if (deltaBlocks > 0 && compSpeed > 0) {
-            uint newAccrued = deltaBlocks * compSpeed;
+            uint256 newAccrued = deltaBlocks * compSpeed;
             compAccrued[contributor] += newAccrued;
             lastContributorBlock[contributor] = blockNumber;
         }
@@ -1053,26 +1289,38 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param borrowers Whether or not to claim COMP earned by borrowing
      * @param suppliers Whether or not to claim COMP earned by supplying
      */
-    function claimComp(address[] memory holders, ICToken[] memory cTokens, bool borrowers, bool suppliers) public {
-        for (uint i = 0; i < cTokens.length; i++) {
+    function claimComp(
+        address[] memory holders,
+        ICToken[] memory cTokens,
+        bool borrowers,
+        bool suppliers
+    ) public {
+        for (uint256 i = 0; i < cTokens.length; i++) {
             ICToken cToken = cTokens[i];
             require(markets[address(cToken)].isListed, "market must be listed");
             if (borrowers) {
-                uint borrowIndex = cToken.borrowIndex();
+                uint256 borrowIndex = cToken.borrowIndex();
                 updateCompBorrowIndex(address(cToken), borrowIndex);
-                for (uint j = 0; j < holders.length; j++) {
-                    distributeBorrowerComp(address(cToken), holders[j], borrowIndex);
+                for (uint256 j = 0; j < holders.length; j++) {
+                    distributeBorrowerComp(
+                        address(cToken),
+                        holders[j],
+                        borrowIndex
+                    );
                 }
             }
             if (suppliers) {
                 updateCompSupplyIndex(address(cToken));
-                for (uint j = 0; j < holders.length; j++) {
+                for (uint256 j = 0; j < holders.length; j++) {
                     distributeSupplierComp(address(cToken), holders[j]);
                 }
             }
         }
-        for (uint j = 0; j < holders.length; j++) {
-            compAccrued[holders[j]] = grantCompInternal(holders[j], compAccrued[holders[j]]);
+        for (uint256 j = 0; j < holders.length; j++) {
+            compAccrued[holders[j]] = grantCompInternal(
+                holders[j],
+                compAccrued[holders[j]]
+            );
         }
     }
 
@@ -1083,9 +1331,12 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param amount The amount of COMP to (possibly) transfer
      * @return The amount of COMP which was NOT transferred to the user
      */
-    function grantCompInternal(address user, uint amount) internal returns (uint) {
+    function grantCompInternal(address user, uint256 amount)
+        internal
+        returns (uint256)
+    {
         Neb comp = Neb(getCompAddress());
-        uint compRemaining = comp.balanceOf(address(this));
+        uint256 compRemaining = comp.balanceOf(address(this));
         if (amount > 0 && amount <= compRemaining) {
             comp.transfer(user, amount);
             return 0;
@@ -1101,9 +1352,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param recipient The address of the recipient to transfer COMP to
      * @param amount The amount of COMP to (possibly) transfer
      */
-    function grantComp(address recipient, uint amount) public {
+    function grantComp(address recipient, uint256 amount) public {
         require(adminOrInitializing(), "only admin can grant comp");
-        uint amountLeft = grantCompInternal(recipient, amount);
+        uint256 amountLeft = grantCompInternal(recipient, amount);
         require(amountLeft == 0, "insufficient comp for grant");
         emit CompGranted(recipient, amount);
     }
@@ -1114,13 +1365,21 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param supplySpeeds New supply-side COMP speed for the corresponding market.
      * @param borrowSpeeds New borrow-side COMP speed for the corresponding market.
      */
-    function setCompSpeeds(CToken[] memory cTokens, uint[] memory supplySpeeds, uint[] memory borrowSpeeds) public {
+    function setCompSpeeds(
+        CToken[] memory cTokens,
+        uint256[] memory supplySpeeds,
+        uint256[] memory borrowSpeeds
+    ) public {
         require(adminOrInitializing(), "only admin can set comp speed");
 
-        uint numTokens = cTokens.length;
-        require(numTokens == supplySpeeds.length && numTokens == borrowSpeeds.length, "Comptroller::_setCompSpeeds invalid input");
+        uint256 numTokens = cTokens.length;
+        require(
+            numTokens == supplySpeeds.length &&
+                numTokens == borrowSpeeds.length,
+            "Comptroller::_setCompSpeeds invalid input"
+        );
 
-        for (uint i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             setCompSpeedInternal(cTokens[i], supplySpeeds[i], borrowSpeeds[i]);
         }
     }
@@ -1130,7 +1389,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param contributor The contributor whose COMP speed to update
      * @param compSpeed New COMP speed for contributor
      */
-    function _setContributorCompSpeed(address contributor, uint compSpeed) public {
+    function _setContributorCompSpeed(address contributor, uint256 compSpeed)
+        public
+    {
         require(adminOrInitializing(), "only admin can set comp speed");
 
         // note that COMP speed could be set to 0 to halt liquidity rewards for a contributor
@@ -1162,13 +1423,12 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      */
     function isDeprecated(ICToken cToken) public view returns (bool) {
         return
-            markets[address(cToken)].collateralFactorMantissa == 0 && 
-            borrowGuardianPaused[address(cToken)] == true && 
-            cToken.reserveFactorMantissa() == 1e18
-        ;
+            markets[address(cToken)].collateralFactorMantissa == 0 &&
+            borrowGuardianPaused[address(cToken)] == true &&
+            cToken.reserveFactorMantissa() == 1e18;
     }
 
-    function getBlockNumber() public view returns (uint) {
+    function getBlockNumber() public view returns (uint256) {
         return block.number;
     }
 

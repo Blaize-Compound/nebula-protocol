@@ -32,15 +32,24 @@ contract CErc20 is CToken, ICErc20 {
      * @param symbol_ ERC-20 symbol of this token
      * @param decimals_ ERC-20 decimal precision of this token
      */
-    function initialize(address underlying_,
-                        IController comptroller_,
-                        IInterestRateModel interestRateModel_,
-                        uint initialExchangeRateMantissa_,
-                        string memory name_,
-                        string memory symbol_,
-                        uint8 decimals_) public {
+    function initialize(
+        address underlying_,
+        IController comptroller_,
+        IInterestRateModel interestRateModel_,
+        uint256 initialExchangeRateMantissa_,
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_
+    ) public {
         // CToken initialize does the bulk of the work
-        super.initialize(comptroller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
+        super.initialize(
+            comptroller_,
+            interestRateModel_,
+            initialExchangeRateMantissa_,
+            name_,
+            symbol_,
+            decimals_
+        );
 
         // Set underlying and sanity check it
         underlying = underlying_;
@@ -54,7 +63,7 @@ contract CErc20 is CToken, ICErc20 {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param mintAmount The amount of the underlying asset to supply
      */
-    function mint(uint mintAmount) external returns (uint) {
+    function mint(uint256 mintAmount) external returns (uint256) {
         mintInternal(mintAmount);
     }
 
@@ -63,7 +72,7 @@ contract CErc20 is CToken, ICErc20 {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemTokens The number of cTokens to redeem into underlying
      */
-    function redeem(uint redeemTokens) external returns (uint) {
+    function redeem(uint256 redeemTokens) external returns (uint256) {
         redeemInternal(redeemTokens);
     }
 
@@ -72,15 +81,15 @@ contract CErc20 is CToken, ICErc20 {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to redeem
      */
-    function redeemUnderlying(uint redeemAmount) external returns (uint) {
+    function redeemUnderlying(uint256 redeemAmount) external returns (uint256) {
         redeemUnderlyingInternal(redeemAmount);
     }
 
     /**
-      * @notice Sender borrows assets from the protocol to their own address
-      * @param borrowAmount The amount of the underlying asset to borrow
-      */
-    function borrow(uint borrowAmount) external returns (uint) {
+     * @notice Sender borrows assets from the protocol to their own address
+     * @param borrowAmount The amount of the underlying asset to borrow
+     */
+    function borrow(uint256 borrowAmount) external returns (uint256) {
         borrowInternal(borrowAmount);
     }
 
@@ -88,7 +97,7 @@ contract CErc20 is CToken, ICErc20 {
      * @notice Sender repays their own borrow
      * @param repayAmount The amount to repay
      */
-    function repayBorrow(uint repayAmount) external returns (uint) {
+    function repayBorrow(uint256 repayAmount) external returns (uint256) {
         repayBorrowInternal(repayAmount);
     }
 
@@ -97,7 +106,10 @@ contract CErc20 is CToken, ICErc20 {
      * @param borrower the account with the debt being payed off
      * @param repayAmount The amount to repay
      */
-    function repayBorrowBehalf(address borrower, uint repayAmount) external returns (uint) {
+    function repayBorrowBehalf(address borrower, uint256 repayAmount)
+        external
+        returns (uint256)
+    {
         repayBorrowBehalfInternal(borrower, repayAmount);
     }
 
@@ -108,7 +120,11 @@ contract CErc20 is CToken, ICErc20 {
      * @param repayAmount The amount of the underlying borrowed asset to repay
      * @param cTokenCollateral The market in which to seize collateral from the borrower
      */
-    function liquidateBorrow(address borrower, uint repayAmount, ICToken cTokenCollateral) external returns (uint) {
+    function liquidateBorrow(
+        address borrower,
+        uint256 repayAmount,
+        ICToken cTokenCollateral
+    ) external returns (uint256) {
         liquidateBorrowInternal(borrower, repayAmount, cTokenCollateral);
     }
 
@@ -117,16 +133,19 @@ contract CErc20 is CToken, ICErc20 {
      * @param token The address of the ERC-20 token to sweep
      */
     function sweepToken(IERC20 token) external onlyAdmin(msg.sender) {
-    	require(address(token) != underlying, "CErc20::sweepToken: can not sweep underlying token");
-    	uint256 balance = token.balanceOf(address(this));
-    	token.safeTransfer(admin, balance);
+        require(
+            address(token) != underlying,
+            "CErc20::sweepToken: can not sweep underlying token"
+        );
+        uint256 balance = token.balanceOf(address(this));
+        token.safeTransfer(admin, balance);
     }
 
     /**
      * @notice The sender adds to reserves.
      * @param addAmount The amount fo underlying token to add as reserves
      */
-    function addReserves(uint addAmount) external {
+    function addReserves(uint256 addAmount) external {
         _addReservesInternal(addAmount);
     }
 
@@ -137,7 +156,7 @@ contract CErc20 is CToken, ICErc20 {
      * @dev This excludes the value of the current message, if any
      * @return The quantity of underlying tokens owned by this contract
      */
-    function getCashPrior() internal override view returns (uint) {
+    function getCashPrior() internal view override returns (uint256) {
         IERC20 token = IERC20(underlying);
         return token.balanceOf(address(this));
     }
@@ -151,14 +170,18 @@ contract CErc20 is CToken, ICErc20 {
      *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
      *            See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
-    function doTransferIn(address from, uint amount) internal override returns (uint) {
+    function doTransferIn(address from, uint256 amount)
+        internal
+        override
+        returns (uint256)
+    {
         IERC20 token = IERC20(underlying);
-        uint balanceBefore = token.balanceOf(address(this));
+        uint256 balanceBefore = token.balanceOf(address(this));
         token.safeTransferFrom(from, address(this), amount);
 
         // Calculate the amount that was *actually* transferred
-        uint balanceAfter = token.balanceOf(address(this));
-        return balanceAfter - balanceBefore;   // underflow already checked above, just subtract
+        uint256 balanceAfter = token.balanceOf(address(this));
+        return balanceAfter - balanceBefore; // underflow already checked above, just subtract
     }
 
     /**
@@ -170,7 +193,10 @@ contract CErc20 is CToken, ICErc20 {
      *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
      *            See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
-    function doTransferOut(address payable to, uint amount) internal override {
+    function doTransferOut(address payable to, uint256 amount)
+        internal
+        override
+    {
         IERC20 token = IERC20(underlying);
         token.safeTransfer(to, amount);
     }
