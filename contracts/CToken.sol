@@ -18,6 +18,12 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         _;
     }
 
+    modifier marketFresh() {
+        /* Verify market's block number equals current block number */
+        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
+        _;
+    }
+
     /**
      * @notice Initialize the money market
      * @param comptroller_ The address of the Comptroller
@@ -54,6 +60,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         // Initialize block number and borrow index (block number mocks depend on comptroller being set)
         accrualBlockNumber = getBlockNumber();
         borrowIndex = 1e18;
+        restPeriod = 4 hours;
 
         // Set the interest rate model (depends on block number / borrow index)
         _setInterestRateModelFresh(interestRateModel_);
@@ -211,14 +218,22 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         returns (
             uint256,
             uint256,
+            uint256,
             uint256
         )
     {
         uint256 cTokenBalance = accountTokens[account];
         uint256 borrowBalance = borrowBalanceStoredInternal(account);
+        uint256 borrowBalanceTotal = borrowBalance +
+            borrowBalanceFixedStored(account);
         uint256 exchangeRateMantissa = exchangeRateStoredInternal();
 
-        return (cTokenBalance, borrowBalance, exchangeRateMantissa);
+        return (
+            cTokenBalance,
+            borrowBalance,
+            exchangeRateMantissa,
+            borrowBalanceTotal
+        );
     }
 
     /**
@@ -227,6 +242,10 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      */
     function getBlockNumber() internal view returns (uint256) {
         return block.number;
+    }
+
+    function getTotalBorrows() external view returns (uint256) {
+        return totalBorrows + totalBorrowsFixed;
     }
 
     /**
@@ -286,6 +305,27 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         return borrowBalanceStored(account);
     }
 
+    function expiredBorrows(address account)
+        external
+        view
+        returns (uint256[] memory indexes, uint256[] memory repayAmounts)
+    {
+        FixedRateBorrow[] memory borrows = accountFixedRateBorrows[account];
+        uint256 count;
+        for (uint256 i = 0; i < borrows.length; i++) {
+            if (
+                block.timestamp >
+                borrows[i].openedAt + borrows[i].duration + restPeriod
+            ) {
+                indexes[count] = i;
+                repayAmounts[count] =
+                    borrows[i].amount +
+                    ((borrows[i].amount * borrows[i].rate) / 1e18);
+                count++;
+            }
+        }
+    }
+
     /**
      * @notice Return the borrow balance of account based on stored data
      * @param account The address whose balance should be calculated
@@ -332,6 +372,19 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         result = principalTimesIndex / borrowSnapshot.interestIndex;
 
         return result;
+    }
+
+    function borrowBalanceFixedStored(address account)
+        internal
+        view
+        returns (uint256)
+    {
+        FixedRateBorrow[] memory borrows = accountFixedRateBorrows[account];
+        uint256 accountTotalFixedBorrow;
+        for (uint256 i = 0; i < borrows.length; i++) {
+            accountTotalFixedBorrow += borrows[i].amount;
+        }
+        return accountTotalFixedBorrow;
     }
 
     /**
@@ -407,7 +460,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
 
         /* Read the previous values out of storage */
         uint256 cashPrior = getCashPrior();
-        uint256 borrowsPrior = totalBorrows;
+        uint256 borrowsPrior = totalBorrows + totalBorrowsFixed;
         uint256 reservesPrior = totalReserves;
         uint256 borrowIndexPrior = borrowIndex;
 
@@ -498,6 +551,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      */
     function mintFresh(address minter, uint256 mintAmount)
         internal
+        marketFresh
         returns (uint256)
     {
         /* Fail if mint not allowed */
@@ -505,9 +559,6 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
             comptroller.mintAllowed(address(this), minter, mintAmount),
             "Mint is not allowed"
         );
-
-        /* Verify market's block number equals current block number */
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
         uint256 exchangeRateMantissa = exchangeRateStoredInternal();
 
@@ -580,7 +631,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         address payable redeemer,
         uint256 redeemTokensIn,
         uint256 redeemAmountIn
-    ) internal {
+    ) internal marketFresh {
         require(
             redeemTokensIn == 0 || redeemAmountIn == 0,
             "one of redeemTokensIn or redeemAmountIn must be zero"
@@ -619,9 +670,6 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
             "Redeem is not allowed"
         );
 
-        /* Verify market's block number equals current block number */
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
-
         /* Fail gracefully if protocol has insufficient cash */
         require(redeemAmount < getCashPrior(), "Insufficient amount of cash");
 
@@ -654,13 +702,65 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         );
     }
 
+    function borrowFixedRate(uint256 borrowAmount, uint256 maturity)
+        internal
+        nonReentrant
+    {
+        require(borrowAmount != 0, "Wrong borrow amount");
+        require(
+            maturity == 1 weeks || maturity == 2 weeks || maturity == 4 weeks,
+            "Wrong maturity provided"
+        );
+        accrueInterest();
+        borrowFixedRateFresh(payable(msg.sender), borrowAmount, maturity);
+    }
+
+    function borrowFixedRateFresh(
+        address payable borrower,
+        uint256 borrowAmount,
+        uint256 maturity
+    ) internal marketFresh {
+        /* Fail if borrow not allowed */
+        require(
+            comptroller.borrowAllowed(address(this), borrower, borrowAmount),
+            "Borrow is not allowed"
+        );
+
+        uint256 cashPrior = getCashPrior();
+        /* Fail gracefully if protocol has insufficient underlying cash */
+        require(borrowAmount < cashPrior, "Insufficient cash");
+        doTransferOut(borrower, borrowAmount);
+
+        /* Calculate the current borrow interest rate */
+        uint256 borrowRateMantissa = interestRateModel.getBorrowRate(
+            cashPrior,
+            totalBorrows + totalBorrowsFixed,
+            totalReserves
+        );
+
+        accountFixedRateBorrows[borrower].push(
+            FixedRateBorrow({
+                amount: borrowAmount,
+                rate: borrowRateMantissa,
+                openedAt: block.timestamp,
+                duration: maturity
+            })
+        );
+
+        uint256 interestedAccumulated = (borrowAmount * borrowRateMantissa) /
+            1e18;
+        totalBorrowsFixed += borrowAmount + interestedAccumulated;
+        totalReserves += (interestedAccumulated * reserveFactorMantissa) / 1e18;
+
+        emit BorrowFixedRate(borrower, borrowAmount, block.timestamp, maturity);
+    }
+
     /**
      * @notice Sender borrows assets from the protocol to their own address
      * @param borrowAmount The amount of the underlying asset to borrow
      */
     function borrowInternal(uint256 borrowAmount) internal nonReentrant {
         accrueInterest();
-        // borrowFresh emits borrow-specific logs on errors, so we don't need to
         borrowFresh(payable(msg.sender), borrowAmount);
     }
 
@@ -670,6 +770,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      */
     function borrowFresh(address payable borrower, uint256 borrowAmount)
         internal
+        marketFresh
     {
         /* Fail if borrow not allowed */
         require(
@@ -677,25 +778,12 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
             "Borrow is not allowed"
         );
 
-        /* Verify market's block number equals current block number */
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
-
         /* Fail gracefully if protocol has insufficient underlying cash */
         require(borrowAmount < getCashPrior(), "Insufficient cash");
 
         uint256 accountBorrowsStored = borrowBalanceStoredInternal(borrower);
         uint256 accountBorrowsNew = accountBorrowsStored + borrowAmount;
 
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        /*
-         * We invoke doTransferOut for the borrower and the borrowAmount.
-         *  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-         *  On success, the cToken borrowAmount less of cash.
-         *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-         */
         doTransferOut(borrower, borrowAmount);
 
         /* We write the previously calculated values into storage */
@@ -705,6 +793,98 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
 
         /* We emit a Borrow event */
         emit Borrow(borrower, borrowAmount, accountBorrowsNew, totalBorrows);
+    }
+
+    function repayBorrowFixedRate(uint256[] memory borrowsIndexes)
+        internal
+        nonReentrant
+    {
+        accrueInterest();
+        repayBorrowFixedRateFresh(msg.sender, msg.sender, borrowsIndexes);
+    }
+
+    function repayBorrowFixedRateOnBehalf(
+        address borrower,
+        uint256[] memory borrowsIndexes
+    ) internal nonReentrant {
+        accrueInterest();
+        repayBorrowFixedRateFresh(msg.sender, borrower, borrowsIndexes);
+    }
+
+    function repayBorrowFixedRateFresh(
+        address payer,
+        address borrower,
+        uint256[] memory borrowsIndexes
+    ) internal marketFresh returns (uint256[] memory actualRepayAmounts) {
+        FixedRateBorrow[] storage borrows = accountFixedRateBorrows[borrower];
+        uint256 totalRepayAmount;
+        uint256 borrowsFixedToSub;
+        actualRepayAmounts = new uint256[](borrowsIndexes.length);
+
+        // Calculate how much to pay for borrows
+        uint256 repaid;
+        for (uint256 i = 0; i < borrowsIndexes.length; i++) {
+            uint256 interestAccumulated = (borrows[borrowsIndexes[i]].amount *
+                borrows[borrowsIndexes[i]].rate) / 1e18;
+            if (
+                block.timestamp >=
+                borrows[borrowsIndexes[i]].openedAt +
+                    borrows[borrowsIndexes[i]].duration
+            ) {
+                repaid = borrows[borrowsIndexes[i]].amount +
+                    interestAccumulated;
+                totalRepayAmount += repaid;
+                borrowsFixedToSub += repaid;
+            } else {
+                borrowsFixedToSub +=
+                    borrows[borrowsIndexes[i]].amount +
+                    interestAccumulated;
+
+                uint256 timeDelta = block.timestamp -
+                    borrows[borrowsIndexes[i]].openedAt;
+                // TODO extra coefficient for repaying before maturity is reached
+                repaid = borrows[borrowsIndexes[i]].amount +
+                    ((interestAccumulated * timeDelta) /
+                        borrows[borrowsIndexes[i]].duration);
+
+                totalRepayAmount += repaid;
+            }
+            borrows[borrowsIndexes[i]].amount = 0;
+            actualRepayAmounts[i] = repaid;
+        }
+
+        /* Fail if repayBorrow not allowed */
+        require(
+            comptroller.repayBorrowAllowed(
+                address(this),
+                payer,
+                borrower,
+                totalRepayAmount
+            ),
+            "Repay is not allowed"
+        );
+
+        doTransferIn(payer, totalRepayAmount);
+        totalBorrowsFixed -= borrowsFixedToSub;
+
+        // Remove repaid borrows
+        for (uint256 i = 0; i < borrows.length; i++) {
+            if (borrows[i].amount == 0) {
+                borrows[i] = borrows[borrows.length - 1];
+                borrows.pop();
+                i--;
+            }
+        }
+
+        emit RepayBorrowFixedRate(
+            payer,
+            borrower,
+            totalRepayAmount,
+            totalBorrowsFixed,
+            actualRepayAmounts
+        );
+
+        return actualRepayAmounts;
     }
 
     /**
@@ -749,7 +929,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         address payer,
         address borrower,
         uint256 repayAmount
-    ) internal returns (uint256) {
+    ) internal marketFresh returns (uint256) {
         /* Fail if repayBorrow not allowed */
         require(
             comptroller.repayBorrowAllowed(
@@ -760,9 +940,6 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
             ),
             "Repay is not allowed"
         );
-
-        /* Verify market's block number equals current block number */
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
         /* We fetch the amount the borrower owes, with accumulated interest */
         uint256 accountBorrowsStored = borrowBalanceStoredInternal(borrower);
@@ -800,6 +977,62 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
             totalBorrows
         );
         return actualRepayAmount;
+    }
+
+    function liquidateBorrowFixedRate(address borrower, uint256[] memory borrowsIndexes, ICToken[] memory cTokenCollaterals) internal nonReentrant {
+        accrueInterest();
+        liquidateBorrowFixedRate(msg.sender, borrower, borrowsIndexes, cTokenCollaterals);
+    }
+
+    function liquidateBorrowFixedRate(address liquidator, address borrower, uint256[] memory borrowsIndexes, ICToken[] memory cTokenCollaterals) internal marketFresh {
+        /* Fail if borrower = liquidator */
+        require(borrower != liquidator, "Can't liquidate your own position");
+
+        // Verify that all the borrows can be liquidated
+        _liquidateFixedBorrowsAllowed(borrower, borrowsIndexes);
+
+        uint256[] memory actualRepayAmounts = repayBorrowFixedRateFresh(
+            liquidator,
+            borrower,
+            borrowsIndexes
+        );
+
+        // Calculate seize tokens
+        for (uint256 i = 0; i < actualRepayAmounts.length; i++) {
+            /* We calculate the number of collateral tokens that will be seized */
+            uint256 seizeTokens = comptroller.liquidateCalculateSeizeTokens(
+                address(this),
+                address(cTokenCollaterals[i]),
+                actualRepayAmounts[i]
+            );
+
+            /* Revert if borrower collateral token balance < seizeTokens */
+            require(
+                cTokenCollaterals[i].balanceOf(borrower) >= seizeTokens,
+                "LIQUIDATE_SEIZE_TOO_MUCH"
+            );
+
+            // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
+            if (address(cTokenCollaterals[i]) == address(this)) {
+                seizeInternal(address(this), liquidator, borrower, seizeTokens);
+            } else {
+                cTokenCollaterals[i].seize(liquidator, borrower, seizeTokens);
+            }
+        }
+
+        emit LiquidateBorrowFixedRate(
+            liquidator,
+            borrower,
+            actualRepayAmounts,
+            cTokenCollaterals
+        );
+    }
+
+    function _liquidateFixedBorrowsAllowed(address borrower, uint256[] memory borrowsIndexes) internal {
+        FixedRateBorrow[] storage borrows = accountFixedRateBorrows[borrower];
+        for (uint256 i = 0; i < borrowsIndexes.length; i++) {
+            require(block.timestamp > borrows[borrowsIndexes[i]].openedAt + borrows[borrowsIndexes[i]].duration + restPeriod, "Cannot liquidate fixed rate borrow");
+        }
     }
 
     /**
@@ -1054,14 +1287,21 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         return _setReserveFactorFresh(newReserveFactorMantissa);
     }
 
+    function setRestPeriod(uint256 newRestPeriod)
+        external
+        onlyAdmin(msg.sender)
+    {
+        restPeriod = newRestPeriod;
+    }
+
     /**
      * @notice Sets a new reserve factor for the protocol (*requires fresh interest accrual)
      * @dev Admin function to set a new reserve factor
      */
-    function _setReserveFactorFresh(uint256 newReserveFactorMantissa) internal {
-        // Verify market's block number equals current block number
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
-
+    function _setReserveFactorFresh(uint256 newReserveFactorMantissa)
+        internal
+        marketFresh
+    {
         // Check newReserveFactor <= maxReserveFactor
         require(
             newReserveFactorMantissa <= reserveFactorMaxMantissa,
@@ -1093,12 +1333,13 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param addAmount Amount of addition to reserves
      * @return the actual amount added, net token fees
      */
-    function _addReservesFresh(uint256 addAmount) internal returns (uint256) {
+    function _addReservesFresh(uint256 addAmount)
+        internal
+        marketFresh
+        returns (uint256)
+    {
         // totalReserves + actualAddAmount
         uint256 actualAddAmount;
-
-        // We fail gracefully unless market's block number equals current block number
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -1142,10 +1383,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @dev Requires fresh interest accrual
      * @param reduceAmount Amount of reduction to reserves)
      */
-    function _reduceReservesFresh(uint256 reduceAmount) internal {
-        // We fail gracefully unless market's block number equals current block number
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
-
+    function _reduceReservesFresh(uint256 reduceAmount) internal marketFresh {
         // Fail gracefully if protocol has insufficient underlying cash
         require(reduceAmount <= getCashPrior(), "Insufficient cash");
         require(reduceAmount <= totalReserves, "Insufficient reserves");
@@ -1184,12 +1422,10 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      */
     function _setInterestRateModelFresh(IInterestRateModel newInterestRateModel)
         internal
+        marketFresh
     {
         // Used to store old model for use in the event that is emitted on success
         IInterestRateModel oldInterestRateModel;
-
-        // We fail gracefully unless market's block number equals current block number
-        require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
 
         // Track the market's current interest rate model
         oldInterestRateModel = interestRateModel;

@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./IController.sol";
+import "./ICToken.sol";
 import "./IInterestRateModel.sol";
 
 interface ICTokenEvents {
@@ -38,6 +39,16 @@ interface ICTokenEvents {
     );
 
     /**
+     * @notice Event emitted when underlying is borrowed with fixed rate
+     */
+    event BorrowFixedRate(
+        address borrower,
+        uint256 borrowAmount,
+        uint256 openedAt,
+        uint256 maturity
+    );
+
+    /**
      * @notice Event emitted when a borrow is repaid
      */
     event RepayBorrow(
@@ -46,6 +57,14 @@ interface ICTokenEvents {
         uint256 repayAmount,
         uint256 accountBorrows,
         uint256 totalBorrows
+    );
+
+    event RepayBorrowFixedRate(
+        address payer,
+        address borrower,
+        uint256 totalRepayAmount,
+        uint256 totalBorrowsFixed,
+        uint256[] repayAmounts
     );
 
     /**
@@ -57,6 +76,13 @@ interface ICTokenEvents {
         uint256 repayAmount,
         address cTokenCollateral,
         uint256 seizeTokens
+    );
+
+    event LiquidateBorrowFixedRate(
+        address liquidator,
+        address borrower,
+        uint256[] repayAmounts,
+        ICToken[] cTokenCollaterals
     );
 
     /*** Admin Events ***/

@@ -111,9 +111,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     function exitMarket(address cTokenAddress) external {
         ICToken cToken = ICToken(cTokenAddress);
         /* Get sender tokensHeld and amountOwed underlying from the cToken */
-        (uint256 tokensHeld, uint256 amountOwed, ) = cToken.getAccountSnapshot(
-            msg.sender
-        );
+        (uint256 tokensHeld, uint256 amountOwed, , ) = cToken
+            .getAccountSnapshot(msg.sender);
 
         /* Fail if the sender has a borrow balance */
         require(amountOwed == 0, "User has a borrow balance");
@@ -254,7 +253,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             redeemer,
             ICToken(cToken),
             redeemTokens,
-            0
+            0,
+            true
         );
         if (shortfall > 0) {
             return false;
@@ -320,7 +320,7 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         uint256 borrowCap = borrowCaps[cToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
         if (borrowCap != 0) {
-            uint256 totalBorrows = ICToken(cToken).totalBorrows();
+            uint256 totalBorrows = ICToken(cToken).getTotalBorrows();
             uint256 nextTotalBorrows = totalBorrows + borrowAmount;
             require(nextTotalBorrows < borrowCap, "market borrow cap reached");
         }
@@ -329,7 +329,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             borrower,
             ICToken(cToken),
             0,
-            borrowAmount
+            borrowAmount,
+            true
         );
         require(shortfall == 0, "Insufficient liquidity");
 
@@ -454,7 +455,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             );
         } else {
             /* The borrower must have shortfall in order to be liquidatable */
-            (, uint256 shortfall) = getAccountLiquidityInternal(borrower);
+            (, uint256 shortfall) = getAccountLiquidityInternalLiquidation(
+                borrower
+            );
 
             require(shortfall != 0, "Insufficient shortfall");
 
@@ -638,7 +641,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
                 account,
                 CToken(address(0)),
                 0,
-                0
+                0,
+                true
             );
 
         return (liquidity, shortfall);
@@ -650,7 +654,7 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
                 account liquidity in excess of collateral requirements,
      *          account shortfall below collateral requirements)
      */
-    function getAccountLiquidityInternal(address account)
+    function getAccountLiquidityInternalLiquidation(address account)
         internal
         view
         returns (uint256, uint256)
@@ -660,7 +664,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
                 account,
                 ICToken(address(0)),
                 0,
-                0
+                0,
+                false
             );
     }
 
@@ -687,9 +692,16 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
                 account,
                 ICToken(cTokenModify),
                 redeemTokens,
-                borrowAmount
+                borrowAmount,
+                true
             );
         return (liquidity, shortfall);
+    }
+
+    struct AccountLiquidityInfo {
+        uint256 cTokenBalance;
+        uint256 exchangeRateMantissa;
+        uint256 borrowBalance;
     }
 
     /**
@@ -708,22 +720,34 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         address account,
         ICToken cTokenModify,
         uint256 redeemTokens,
-        uint256 borrowAmount
+        uint256 borrowAmount,
+        bool withFixed
     ) internal view returns (uint256, uint256) {
         uint256 sumCollateral;
         uint256 sumBorrowPlusEffects;
 
         // For each asset the account is in
         ICToken[] memory assets = accountAssets[account];
+        AccountLiquidityInfo memory accountInfo;
         for (uint256 i = 0; i < assets.length; i++) {
             ICToken asset = assets[i];
 
             // Read the balances and exchange rate from the cToken
-            (
-                uint256 cTokenBalance,
-                uint256 borrowBalance,
-                uint256 exchangeRateMantissa
-            ) = asset.getAccountSnapshot(account);
+            if (withFixed) {
+                (
+                    accountInfo.cTokenBalance,
+                    ,
+                    accountInfo.exchangeRateMantissa,
+                    accountInfo.borrowBalance
+                ) = asset.getAccountSnapshot(account);
+            } else {
+                (
+                    accountInfo.cTokenBalance,
+                    accountInfo.borrowBalance,
+                    accountInfo.exchangeRateMantissa,
+
+                ) = asset.getAccountSnapshot(account);
+            }
 
             // Get the normalized price of the asset
             uint256 oraclePrice = oracle.getUnderlyingPrice(asset);
@@ -731,13 +755,15 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
 
             // Pre-compute a conversion factor from tokens -> ether (normalized price value)
             uint256 tokensToDenom = (((markets[address(asset)]
-                .collateralFactorMantissa * exchangeRateMantissa) / 1e18) *
-                oraclePrice) / 1e18;
+                .collateralFactorMantissa * accountInfo.exchangeRateMantissa) /
+                1e18) * oraclePrice) / 1e18;
 
             // sumCollateral += tokensToDenom * cTokenBalance
-            sumCollateral += (tokensToDenom * cTokenBalance) / 1e18;
+            sumCollateral += (tokensToDenom * accountInfo.cTokenBalance) / 1e18;
             // sumBorrowPlusEffects += oraclePrice * borrowBalance
-            sumBorrowPlusEffects += (oraclePrice * borrowBalance) / 1e18;
+            sumBorrowPlusEffects +=
+                (oraclePrice * accountInfo.borrowBalance) /
+                1e18;
 
             // Calculate effects of interacting with cTokenModify
             if (asset == cTokenModify) {
@@ -1147,7 +1173,7 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         uint256 blockNumber = getBlockNumber();
         uint256 deltaBlocks = blockNumber - borrowState.block;
         if (deltaBlocks > 0 && borrowSpeed > 0) {
-            uint256 borrowAmount = ICToken(cToken).totalBorrows() /
+            uint256 borrowAmount = ICToken(cToken).getTotalBorrows() /
                 marketBorrowIndex;
             uint256 compAccrued = deltaBlocks * borrowSpeed;
             uint256 ratio = borrowAmount > 0
