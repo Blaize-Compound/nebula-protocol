@@ -147,9 +147,9 @@ abstract contract CTokenStorage is ICToken {
     }
 
     /**
-     * @notice Mapping of account addresses to array of every fixed borrow 
+     * @notice Mapping of account addresses to array of every fixed borrow
      */
-    mapping(address => FixedRateBorrow[]) internal accountFixedRateBorrows; 
+    mapping(address => FixedRateBorrow[]) internal accountFixedRateBorrows;
 
     /**
      * @notice Share of seized collateral that is added to reserves

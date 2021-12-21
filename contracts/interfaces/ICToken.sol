@@ -42,7 +42,10 @@ interface ICToken {
 
     function borrowRatePerBlock() external view returns (uint256);
 
-    function expiredBorrows(address account) external view returns (uint256[] memory indexes, uint256[] memory repayAmounts);
+    function expiredBorrows(address account)
+        external
+        view
+        returns (uint256[] memory indexes, uint256[] memory repayAmounts);
 
     function supplyRatePerBlock() external view returns (uint256);
 

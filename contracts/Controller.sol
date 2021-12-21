@@ -111,9 +111,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
     function exitMarket(address cTokenAddress) external {
         ICToken cToken = ICToken(cTokenAddress);
         /* Get sender tokensHeld and amountOwed underlying from the cToken */
-        (uint256 tokensHeld, uint256 amountOwed, , ) = cToken.getAccountSnapshot(
-            msg.sender
-        );
+        (uint256 tokensHeld, uint256 amountOwed, , ) = cToken
+            .getAccountSnapshot(msg.sender);
 
         /* Fail if the sender has a borrow balance */
         require(amountOwed == 0, "User has a borrow balance");
@@ -456,7 +455,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             );
         } else {
             /* The borrower must have shortfall in order to be liquidatable */
-            (, uint256 shortfall) = getAccountLiquidityInternalLiquidation(borrower);
+            (, uint256 shortfall) = getAccountLiquidityInternalLiquidation(
+                borrower
+            );
 
             require(shortfall != 0, "Insufficient shortfall");
 
@@ -734,15 +735,18 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             // Read the balances and exchange rate from the cToken
             if (withFixed) {
                 (
-                accountInfo.cTokenBalance,
-                ,
-                accountInfo.exchangeRateMantissa,
-                accountInfo.borrowBalance) = asset.getAccountSnapshot(account);
+                    accountInfo.cTokenBalance,
+                    ,
+                    accountInfo.exchangeRateMantissa,
+                    accountInfo.borrowBalance
+                ) = asset.getAccountSnapshot(account);
             } else {
                 (
-                accountInfo.cTokenBalance,
-                accountInfo.borrowBalance,
-                accountInfo.exchangeRateMantissa, ) = asset.getAccountSnapshot(account);
+                    accountInfo.cTokenBalance,
+                    accountInfo.borrowBalance,
+                    accountInfo.exchangeRateMantissa,
+
+                ) = asset.getAccountSnapshot(account);
             }
 
             // Get the normalized price of the asset
@@ -751,13 +755,15 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
 
             // Pre-compute a conversion factor from tokens -> ether (normalized price value)
             uint256 tokensToDenom = (((markets[address(asset)]
-                .collateralFactorMantissa * accountInfo.exchangeRateMantissa) / 1e18) *
-                oraclePrice) / 1e18;
+                .collateralFactorMantissa * accountInfo.exchangeRateMantissa) /
+                1e18) * oraclePrice) / 1e18;
 
             // sumCollateral += tokensToDenom * cTokenBalance
             sumCollateral += (tokensToDenom * accountInfo.cTokenBalance) / 1e18;
             // sumBorrowPlusEffects += oraclePrice * borrowBalance
-            sumBorrowPlusEffects += (oraclePrice * accountInfo.borrowBalance) / 1e18;
+            sumBorrowPlusEffects +=
+                (oraclePrice * accountInfo.borrowBalance) /
+                1e18;
 
             // Calculate effects of interacting with cTokenModify
             if (asset == cTokenModify) {
