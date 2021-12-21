@@ -28,16 +28,21 @@ interface ICToken {
 
     function balanceOfUnderlying(address owner) external returns (uint256);
 
+    function getTotalBorrows() external view returns (uint256);
+
     function getAccountSnapshot(address account)
         external
         view
         returns (
             uint256,
             uint256,
+            uint256,
             uint256
         );
 
     function borrowRatePerBlock() external view returns (uint256);
+
+    function expiredBorrows(address account) external view returns (uint256[] memory indexes, uint256[] memory repayAmounts);
 
     function supplyRatePerBlock() external view returns (uint256);
 

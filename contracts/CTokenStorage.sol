@@ -88,6 +88,11 @@ abstract contract CTokenStorage is ICToken {
     uint256 public totalBorrows;
 
     /**
+     * @notice Total amount of outstanding borrows of the underlying, borrowed with fixed rate
+     */
+    uint256 public totalBorrowsFixed;
+
+    /**
      * @notice Total amount of reserves of the underlying held in this market
      */
     uint256 public totalReserves;
@@ -96,6 +101,11 @@ abstract contract CTokenStorage is ICToken {
      * @notice Total number of tokens in circulation
      */
     uint256 public totalSupply;
+
+    /**
+     * @notice Amount of time, given for user in order to repay borrow after maturity is reached
+     */
+    uint256 public restPeriod;
 
     /**
      * @notice Official record of token balances for each account
@@ -121,6 +131,25 @@ abstract contract CTokenStorage is ICToken {
      * @notice Mapping of account addresses to outstanding borrow balances
      */
     mapping(address => BorrowSnapshot) internal accountBorrows;
+
+    /**
+     * @notice Container for fixed borrow balance information
+     * @member amount Amount of underlying borrowed with provided rate
+     * @member rate Fixed rate with which a borrow was made
+     * @member openedAt Timestamp, inidicating when a borrow was taken
+     * @member duration Duration till maturity will be reached
+     */
+    struct FixedRateBorrow {
+        uint256 amount;
+        uint256 rate;
+        uint256 openedAt;
+        uint256 duration;
+    }
+
+    /**
+     * @notice Mapping of account addresses to array of every fixed borrow 
+     */
+    mapping(address => FixedRateBorrow[]) internal accountFixedRateBorrows; 
 
     /**
      * @notice Share of seized collateral that is added to reserves

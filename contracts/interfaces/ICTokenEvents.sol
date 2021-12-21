@@ -38,6 +38,16 @@ interface ICTokenEvents {
     );
 
     /**
+     * @notice Event emitted when underlying is borrowed with fixed rate
+     */
+    event BorrowFixedRate(
+        address borrower,
+        uint256 borrowAmount,
+        uint256 openedAt,
+        uint256 maturity
+    );
+
+    /**
      * @notice Event emitted when a borrow is repaid
      */
     event RepayBorrow(
