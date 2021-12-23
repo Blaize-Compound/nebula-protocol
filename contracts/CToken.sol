@@ -41,7 +41,8 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         string memory symbol_,
         uint8 decimals_
     ) public {
-        require(msg.sender == admin, "only admin may initialize the market");
+        //require(msg.sender == admin, "only admin may initialize the market");
+        admin = payable(msg.sender);
         require(
             accrualBlockNumber == 0 && borrowIndex == 0,
             "market may only be initialized once"
@@ -263,9 +264,18 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         return
             interestRateModel.getBorrowRate(
                 getCashPrior(),
-                totalBorrows,
+                totalBorrows + totalBorrowsFixed,
                 totalReserves
             );
+    }
+
+    function borrowRatePerTime(uint256 time) external view returns (uint256) {
+        return interestRateModel.getBorrowRatePerTime(
+            getCashPrior(),
+            totalBorrows + totalBorrowsFixed,
+            totalReserves,
+            time
+        );
     }
 
     /**
@@ -276,7 +286,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         return
             interestRateModel.getSupplyRate(
                 getCashPrior(),
-                totalBorrows,
+                totalBorrows + totalBorrowsFixed,
                 totalReserves,
                 reserveFactorMantissa
             );
@@ -289,6 +299,10 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
     function totalBorrowsCurrent() external nonReentrant returns (uint256) {
         accrueInterest();
         return totalBorrows;
+    }
+
+    function fixedBorrowsAmount(address account) external view returns (uint256) {
+        return accountFixedRateBorrows[account].length;
     }
 
     /**
@@ -311,19 +325,34 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         returns (uint256[] memory indexes, uint256[] memory repayAmounts)
     {
         FixedRateBorrow[] memory borrows = accountFixedRateBorrows[account];
+        if (borrows.length == 0) {
+            return (indexes, repayAmounts);
+        }
+
+        uint256[] memory tmpIndexes = new uint256[](borrows.length);
+        uint256[] memory tmpRepayAmounts = new uint256[](borrows.length);
         uint256 count;
         for (uint256 i = 0; i < borrows.length; i++) {
             if (
                 block.timestamp >
                 borrows[i].openedAt + borrows[i].duration + restPeriod
             ) {
-                indexes[count] = i;
-                repayAmounts[count] =
+                tmpIndexes[count] = i;
+                tmpRepayAmounts[count] =
                     borrows[i].amount +
                     ((borrows[i].amount * borrows[i].rate) / 1e18);
                 count++;
             }
         }
+
+        indexes = new uint256[](count);
+        repayAmounts = new uint256[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            indexes[i] = tmpIndexes[i];
+            repayAmounts[i] = tmpRepayAmounts[i];
+        }
+
     }
 
     /**
@@ -428,7 +457,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         uint256 cashPlusBorrowsMinusReserves;
         uint256 exchangeRate;
 
-        cashPlusBorrowsMinusReserves = totalCash + totalBorrows - totalReserves;
+        cashPlusBorrowsMinusReserves = totalCash + (totalBorrows + totalBorrowsFixed) - totalReserves;
 
         exchangeRate = (cashPlusBorrowsMinusReserves * 1e18) / _totalSupply;
 
@@ -460,14 +489,14 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
 
         /* Read the previous values out of storage */
         uint256 cashPrior = getCashPrior();
-        uint256 borrowsPrior = totalBorrows + totalBorrowsFixed;
+        uint256 borrowsPrior = totalBorrows;
         uint256 reservesPrior = totalReserves;
         uint256 borrowIndexPrior = borrowIndex;
 
         /* Calculate the current borrow interest rate */
         uint256 borrowRateMantissa = interestRateModel.getBorrowRate(
             cashPrior,
-            borrowsPrior,
+            borrowsPrior + totalBorrowsFixed,
             reservesPrior
         );
         require(
@@ -601,6 +630,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
      * @param redeemTokens The number of cTokens to redeem into underlying
      */
     function redeemInternal(uint256 redeemTokens) internal nonReentrant {
+        require(redeemTokens != 0, "Wrong amount");
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), redeemTokens, 0);
@@ -615,6 +645,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         internal
         nonReentrant
     {
+        require(redeemAmount != 0, "Wrong amount");
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), 0, redeemAmount);
@@ -671,7 +702,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         );
 
         /* Fail gracefully if protocol has insufficient cash */
-        require(redeemAmount < getCashPrior(), "Insufficient amount of cash");
+        require(redeemAmount <= getCashPrior(), "Insufficient amount of cash");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -702,7 +733,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         );
     }
 
-    function borrowFixedRate(uint256 borrowAmount, uint256 maturity)
+    function borrowFixedRateInternal(uint256 borrowAmount, uint256 maturity)
         internal
         nonReentrant
     {
@@ -732,10 +763,11 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         doTransferOut(borrower, borrowAmount);
 
         /* Calculate the current borrow interest rate */
-        uint256 borrowRateMantissa = interestRateModel.getBorrowRate(
+        uint256 borrowRateMantissa = interestRateModel.getBorrowRatePerTime(
             cashPrior,
             totalBorrows + totalBorrowsFixed,
-            totalReserves
+            totalReserves,
+            maturity
         );
 
         accountFixedRateBorrows[borrower].push(
@@ -795,7 +827,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         emit Borrow(borrower, borrowAmount, accountBorrowsNew, totalBorrows);
     }
 
-    function repayBorrowFixedRate(uint256[] memory borrowsIndexes)
+    function repayBorrowFixedRateInternal(uint256[] memory borrowsIndexes)
         internal
         nonReentrant
     {
@@ -803,7 +835,7 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         repayBorrowFixedRateFresh(msg.sender, msg.sender, borrowsIndexes);
     }
 
-    function repayBorrowFixedRateOnBehalf(
+    function repayBorrowFixedRateOnBehalfInternal(
         address borrower,
         uint256[] memory borrowsIndexes
     ) internal nonReentrant {
@@ -819,6 +851,8 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         FixedRateBorrow[] storage borrows = accountFixedRateBorrows[borrower];
         uint256 totalRepayAmount;
         uint256 borrowsFixedToSub;
+        uint256 totalReservesToSub;
+        uint256 totalReservesToAdd;
         actualRepayAmounts = new uint256[](borrowsIndexes.length);
 
         // Calculate how much to pay for borrows
@@ -831,25 +865,25 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
                 borrows[borrowsIndexes[i]].openedAt +
                     borrows[borrowsIndexes[i]].duration
             ) {
-                repaid = borrows[borrowsIndexes[i]].amount +
+                repaid =
+                    borrows[borrowsIndexes[i]].amount +
                     interestAccumulated;
-                totalRepayAmount += repaid;
                 borrowsFixedToSub += repaid;
             } else {
                 borrowsFixedToSub +=
                     borrows[borrowsIndexes[i]].amount +
                     interestAccumulated;
-
+                totalReservesToSub += (reserveFactorMantissa * interestAccumulated) / 1e18;
                 uint256 timeDelta = block.timestamp -
                     borrows[borrowsIndexes[i]].openedAt;
                 // TODO extra coefficient for repaying before maturity is reached
-                repaid = borrows[borrowsIndexes[i]].amount +
-                    ((interestAccumulated * timeDelta) /
-                        borrows[borrowsIndexes[i]].duration);
-
-                totalRepayAmount += repaid;
+                interestAccumulated = (interestAccumulated * timeDelta) /
+                        borrows[borrowsIndexes[i]].duration;
+                repaid = borrows[borrowsIndexes[i]].amount + interestAccumulated;
+                totalReservesToAdd += (interestAccumulated * reserveFactorMantissa) / 1e18;
             }
             borrows[borrowsIndexes[i]].amount = 0;
+            totalRepayAmount += repaid;
             actualRepayAmounts[i] = repaid;
         }
 
@@ -866,16 +900,19 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
 
         doTransferIn(payer, totalRepayAmount);
         totalBorrowsFixed -= borrowsFixedToSub;
+        totalReserves -= totalReservesToSub;
+        totalReserves += totalReservesToAdd;
 
         // Remove repaid borrows
-        for (uint256 i = 0; i < borrows.length; i++) {
-            if (borrows[i].amount == 0) {
-                borrows[i] = borrows[borrows.length - 1];
-                borrows.pop();
-                i--;
+        unchecked {
+            for (uint256 i = 0; i < borrows.length; i++) {
+                if (borrows[i].amount == 0) {
+                    borrows[i] = borrows[borrows.length - 1];
+                    borrows.pop();
+                    i--;
+                }
             }
         }
-
         emit RepayBorrowFixedRate(
             payer,
             borrower,
@@ -979,12 +1016,27 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         return actualRepayAmount;
     }
 
-    function liquidateBorrowFixedRate(address borrower, uint256[] memory borrowsIndexes, ICToken[] memory cTokenCollaterals) internal nonReentrant {
+    function liquidateBorrowFixedRateInternal(
+        address borrower,
+        uint256[] memory borrowsIndexes,
+        ICToken[] memory cTokenCollaterals
+    ) internal nonReentrant {
+        require(borrowsIndexes.length == cTokenCollaterals.length, "Wrong arrays length");
         accrueInterest();
-        liquidateBorrowFixedRate(msg.sender, borrower, borrowsIndexes, cTokenCollaterals);
+        liquidateBorrowFixedRate(
+            msg.sender,
+            borrower,
+            borrowsIndexes,
+            cTokenCollaterals
+        );
     }
 
-    function liquidateBorrowFixedRate(address liquidator, address borrower, uint256[] memory borrowsIndexes, ICToken[] memory cTokenCollaterals) internal marketFresh {
+    function liquidateBorrowFixedRate(
+        address liquidator,
+        address borrower,
+        uint256[] memory borrowsIndexes,
+        ICToken[] memory cTokenCollaterals
+    ) internal marketFresh {
         /* Fail if borrower = liquidator */
         require(borrower != liquidator, "Can't liquidate your own position");
 
@@ -1028,10 +1080,19 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         );
     }
 
-    function _liquidateFixedBorrowsAllowed(address borrower, uint256[] memory borrowsIndexes) internal {
+    function _liquidateFixedBorrowsAllowed(
+        address borrower,
+        uint256[] memory borrowsIndexes
+    ) internal {
         FixedRateBorrow[] storage borrows = accountFixedRateBorrows[borrower];
         for (uint256 i = 0; i < borrowsIndexes.length; i++) {
-            require(block.timestamp > borrows[borrowsIndexes[i]].openedAt + borrows[borrowsIndexes[i]].duration + restPeriod, "Cannot liquidate fixed rate borrow");
+            require(
+                block.timestamp >
+                    borrows[borrowsIndexes[i]].openedAt +
+                        borrows[borrowsIndexes[i]].duration +
+                        restPeriod,
+                "Cannot liquidate fixed rate borrow"
+            );
         }
     }
 
@@ -1203,13 +1264,15 @@ abstract contract CToken is CTokenStorage, ICTokenEvents {
         uint256 protocolSeizeAmount = (exchangeRateMantissa *
             protocolSeizeTokens) / 1e18;
 
+        
         /////////////////////////
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
         /* We write the previously calculated values into storage */
         totalReserves += protocolSeizeAmount;
-        totalSupply -= protocolSeizeAmount;
+        totalSupply -= protocolSeizeTokens;
+        
         accountTokens[borrower] -= seizeTokens;
         accountTokens[liquidator] += liquidatorSeizeTokens;
 

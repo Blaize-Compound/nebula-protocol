@@ -18,11 +18,21 @@ interface ICErc20 {
 
     function borrow(uint256 borrowAmount) external returns (uint256);
 
+    function borrowFixedRate(uint256 borrowAmount, uint256 maturity) external;
+
+    function repayBorrowFixedRate(uint256[] memory borrowsIndexes) external;
+
+    function repayBorrowFixedRateOnBehalf(address borrower, uint256[] memory borrowsIndexes) external;
+
     function repayBorrow(uint256 repayAmount) external returns (uint256);
 
-    function repayBorrowBehalf(address borrower, uint256 repayAmount)
-        external
-        returns (uint256);
+    function repayBorrowBehalf(address borrower, uint256 repayAmount) external returns (uint256);
+
+    function liquidateBorrowFixedRate(
+        address borrower,
+        uint256[] memory borrowsIndexes,
+        ICToken[] memory cTokenCollaterals
+    ) external;
 
     function liquidateBorrow(
         address borrower,

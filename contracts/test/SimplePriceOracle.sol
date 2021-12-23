@@ -14,17 +14,9 @@ contract SimplePriceOracle is IPriceOracle {
         uint256 newPriceMantissa
     );
 
-    function _getUnderlyingAddress(ICToken cToken)
-        private
-        view
-        returns (address)
-    {
+    function _getUnderlyingAddress(ICToken cToken) private view returns (address) {
         address asset;
-        if (compareStrings(IERC20Metadata(address(cToken)).symbol(), "cETH")) {
-            asset = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-        } else {
-            asset = address(ICErc20(address(cToken)).underlying());
-        }
+        asset = address(ICErc20(address(cToken)).underlying());
         return asset;
     }
 
@@ -32,16 +24,9 @@ contract SimplePriceOracle is IPriceOracle {
         return prices[_getUnderlyingAddress(cToken)];
     }
 
-    function setUnderlyingPrice(ICToken cToken, uint256 underlyingPriceMantissa)
-        public
-    {
+    function setUnderlyingPrice(ICToken cToken, uint256 underlyingPriceMantissa) public {
         address asset = _getUnderlyingAddress(cToken);
-        emit PricePosted(
-            asset,
-            prices[asset],
-            underlyingPriceMantissa,
-            underlyingPriceMantissa
-        );
+        emit PricePosted(asset, prices[asset], underlyingPriceMantissa, underlyingPriceMantissa);
         prices[asset] = underlyingPriceMantissa;
     }
 
@@ -55,12 +40,7 @@ contract SimplePriceOracle is IPriceOracle {
         return prices[asset];
     }
 
-    function compareStrings(string memory a, string memory b)
-        internal
-        pure
-        returns (bool)
-    {
-        return (keccak256(abi.encodePacked((a))) ==
-            keccak256(abi.encodePacked((b))));
+    function compareStrings(string memory a, string memory b) internal pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 }

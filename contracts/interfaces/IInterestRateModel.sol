@@ -21,6 +21,13 @@ interface IInterestRateModel {
         uint256 reserves
     ) external view returns (uint256);
 
+    function getBorrowRatePerTime(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves,
+        uint256 duration 
+    ) external view returns (uint256);
+
     /**
      * @notice Calculates the current supply interest rate per block
      * @param cash The total amount of cash the market has

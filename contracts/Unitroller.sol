@@ -12,18 +12,12 @@ contract Unitroller is UnitrollerAdminStorage {
     /**
      * @notice Emitted when pendingComptrollerImplementation is changed
      */
-    event NewPendingImplementation(
-        address oldPendingImplementation,
-        address newPendingImplementation
-    );
+    event NewPendingImplementation(address oldPendingImplementation, address newPendingImplementation);
 
     /**
      * @notice Emitted when pendingComptrollerImplementation is accepted, which means comptroller implementation is updated
      */
-    event NewImplementation(
-        address oldImplementation,
-        address newImplementation
-    );
+    event NewImplementation(address oldImplementation, address newImplementation);
 
     /**
      * @notice Emitted when pendingAdmin is changed
@@ -46,16 +40,10 @@ contract Unitroller is UnitrollerAdminStorage {
     }
 
     /*** Admin Functions ***/
-    function setPendingImplementation(address newPendingImplementation)
-        public
-        onlyAdmin(msg.sender)
-    {
+    function setPendingImplementation(address newPendingImplementation) public onlyAdmin(msg.sender) {
         address oldPendingImplementation = pendingComptrollerImplementation;
         pendingComptrollerImplementation = newPendingImplementation;
-        emit NewPendingImplementation(
-            oldPendingImplementation,
-            pendingComptrollerImplementation
-        );
+        emit NewPendingImplementation(oldPendingImplementation, pendingComptrollerImplementation);
     }
 
     /**
@@ -65,8 +53,7 @@ contract Unitroller is UnitrollerAdminStorage {
     function acceptImplementation() public returns (bool) {
         // Check caller is pendingImplementation and pendingImplementation != address(0)
         require(
-            msg.sender == pendingComptrollerImplementation &&
-                pendingComptrollerImplementation != address(0),
+            msg.sender == pendingComptrollerImplementation && pendingComptrollerImplementation != address(0),
             "Unauthorized"
         );
 
@@ -76,10 +63,7 @@ contract Unitroller is UnitrollerAdminStorage {
         pendingComptrollerImplementation = address(0);
 
         emit NewImplementation(oldImplementation, comptrollerImplementation);
-        emit NewPendingImplementation(
-            oldPendingImplementation,
-            pendingComptrollerImplementation
-        );
+        emit NewPendingImplementation(oldPendingImplementation, pendingComptrollerImplementation);
 
         return true;
     }
@@ -89,10 +73,7 @@ contract Unitroller is UnitrollerAdminStorage {
      * @dev Admin function to begin change of admin. The newPendingAdmin must call _acceptAdmin to finalize the transfer.
      * @param newPendingAdmin New pending admin.
      */
-    function setPendingAdmin(address newPendingAdmin)
-        public
-        onlyAdmin(msg.sender)
-    {
+    function setPendingAdmin(address newPendingAdmin) public onlyAdmin(msg.sender) {
         require(newPendingAdmin != address(0), "Zero address");
         address oldPendingAdmin = pendingAdmin;
         pendingAdmin = newPendingAdmin;
