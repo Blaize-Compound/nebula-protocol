@@ -2,11 +2,11 @@
 pragma solidity 0.8.10;
 
 import "./IController.sol";
-import "./ICToken.sol";
+import "./IMToken.sol";
 import "./IInterestRateModel.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface ICErc20 {
+interface IMErc20 {
     /*** User Interface ***/
     function underlying() external view returns (address);
 
@@ -31,13 +31,13 @@ interface ICErc20 {
     function liquidateBorrowFixedRate(
         address borrower,
         uint256[] memory borrowsIndexes,
-        ICToken[] memory cTokenCollaterals
+        IMToken[] memory mTokenCollaterals
     ) external;
 
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
-        ICToken cTokenCollateral
+        IMToken mTokenCollateral
     ) external returns (uint256);
 
     function sweepToken(IERC20 token) external;

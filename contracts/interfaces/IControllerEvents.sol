@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./ICToken.sol";
+import "./IMToken.sol";
 import "./IPriceOracle.sol";
 
 interface IControllerEvents {
     /// @notice Emitted when an admin supports a market
-    event MarketListed(ICToken cToken);
+    event MarketListed(IMToken mToken);
 
     /// @notice Emitted when an account enters a market
-    event MarketEntered(ICToken cToken, address account);
+    event MarketEntered(IMToken mToken, address account);
 
     /// @notice Emitted when an account exits a market
-    event MarketExited(ICToken cToken, address account);
+    event MarketExited(IMToken mToken, address account);
 
     /// @notice Emitted when close factor is changed by admin
     event NewCloseFactor(uint256 oldCloseFactorMantissa, uint256 newCloseFactorMantissa);
 
     /// @notice Emitted when a collateral factor is changed by admin
-    event NewCollateralFactor(ICToken cToken, uint256 oldCollateralFactorMantissa, uint256 newCollateralFactorMantissa);
+    event NewCollateralFactor(IMToken mToken, uint256 oldCollateralFactorMantissa, uint256 newCollateralFactorMantissa);
 
     /// @notice Emitted when liquidation incentive is changed by admin
     event NewLiquidationIncentive(uint256 oldLiquidationIncentiveMantissa, uint256 newLiquidationIncentiveMantissa);
@@ -33,45 +33,45 @@ interface IControllerEvents {
     event ActionPaused(string action, bool pauseState);
 
     /// @notice Emitted when an action is paused on a market
-    event ActionPaused(ICToken cToken, string action, bool pauseState);
+    event ActionPaused(IMToken mToken, string action, bool pauseState);
 
-    /// @notice Emitted when a new borrow-side COMP speed is calculated for a market
-    event CompBorrowSpeedUpdated(ICToken indexed cToken, uint256 newSpeed);
+    /// @notice Emitted when a new borrow-side NEB speed is calculated for a market
+    event NebBorrowSpeedUpdated(IMToken indexed mToken, uint256 newSpeed);
 
-    /// @notice Emitted when a new supply-side COMP speed is calculated for a market
-    event CompSupplySpeedUpdated(ICToken indexed cToken, uint256 newSpeed);
+    /// @notice Emitted when a new supply-side NEB speed is calculated for a market
+    event NebSupplySpeedUpdated(IMToken indexed mToken, uint256 newSpeed);
 
-    /// @notice Emitted when a new COMP speed is set for a contributor
-    event ContributorCompSpeedUpdated(address indexed contributor, uint256 newSpeed);
+    /// @notice Emitted when a new NEB speed is set for a contributor
+    event ContributorNebSpeedUpdated(address indexed contributor, uint256 newSpeed);
 
-    /// @notice Emitted when COMP is distributed to a supplier
-    event DistributedSupplierComp(
-        ICToken indexed cToken,
+    /// @notice Emitted when NEB is distributed to a supplier
+    event DistributedSupplierNeb(
+        IMToken indexed mToken,
         address indexed supplier,
-        uint256 compDelta,
-        uint256 compSupplyIndex
+        uint256 NebDelta,
+        uint256 NebSupplyIndex
     );
 
-    /// @notice Emitted when COMP is distributed to a borrower
-    event DistributedBorrowerComp(
-        ICToken indexed cToken,
+    /// @notice Emitted when NEB is distributed to a borrower
+    event DistributedBorrowerNeb(
+        IMToken indexed mToken,
         address indexed borrower,
-        uint256 compDelta,
-        uint256 compBorrowIndex
+        uint256 NebDelta,
+        uint256 NebBorrowIndex
     );
 
-    /// @notice Emitted when borrow cap for a cToken is changed
-    event NewBorrowCap(ICToken indexed cToken, uint256 newBorrowCap);
+    /// @notice Emitted when borrow cap for a mToken is changed
+    event NewBorrowCap(IMToken indexed mToken, uint256 newBorrowCap);
 
     /// @notice Emitted when borrow cap guardian is changed
     event NewBorrowCapGuardian(address oldBorrowCapGuardian, address newBorrowCapGuardian);
 
-    /// @notice Emitted when COMP is granted by admin
-    event CompGranted(address recipient, uint256 amount);
+    /// @notice Emitted when NEB is granted by admin
+    event NebGranted(address recipient, uint256 amount);
 
-    /// @notice Emitted when COMP accrued for a user has been manually adjusted.
-    event CompAccruedAdjusted(address indexed user, uint256 oldCompAccrued, uint256 newCompAccrued);
+    /// @notice Emitted when NEB accrued for a user has been manually adjusted.
+    event NebAccruedAdjusted(address indexed user, uint256 oldNebAccrued, uint256 newNebAccrued);
 
-    /// @notice Emitted when COMP receivable for a user has been updated.
-    event CompReceivableUpdated(address indexed user, uint256 oldCompReceivable, uint256 newCompReceivable);
+    /// @notice Emitted when NEB receivable for a user has been updated.
+    event NebReceivableUpdated(address indexed user, uint256 oldNebReceivable, uint256 newNebReceivable);
 }

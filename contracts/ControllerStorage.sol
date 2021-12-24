@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./interfaces/ICToken.sol";
+import "./interfaces/IMToken.sol";
 import "./interfaces/IPriceOracle.sol";
 
 contract UnitrollerAdminStorage {
@@ -18,12 +18,12 @@ contract UnitrollerAdminStorage {
     /**
      * @notice Active brains of Unitroller
      */
-    address public comptrollerImplementation;
+    address public controllerImplementation;
 
     /**
      * @notice Pending brains of Unitroller
      */
-    address public pendingComptrollerImplementation;
+    address public pendingControllerImplementation;
 }
 
 contract ControllerV1Storage is UnitrollerAdminStorage {
@@ -50,7 +50,7 @@ contract ControllerV1Storage is UnitrollerAdminStorage {
     /**
      * @notice Per-account mapping of "assets you are in", capped by maxAssets
      */
-    mapping(address => ICToken[]) public accountAssets;
+    mapping(address => IMToken[]) public accountAssets;
 }
 
 contract ControllerV2Storage is ControllerV1Storage {
@@ -63,7 +63,7 @@ contract ControllerV2Storage is ControllerV1Storage {
          *  Must be between 0 and 1, and stored as a mantissa.
          */
         uint256 collateralFactorMantissa;
-        /// @notice Whether or not this market receives COMP
+        /// @notice Whether or not this market receives NEB
         bool isComped;
     }
 
@@ -92,7 +92,7 @@ contract ControllerV2Storage is ControllerV1Storage {
 }
 
 contract ControllerV3Storage is ControllerV2Storage {
-    struct CompMarketState {
+    struct NebMarketState {
         /// @notice The market's last updated compBorrowIndex or compSupplyIndex
         uint256 index;
         /// @notice The block number the index was last updated at
@@ -100,28 +100,28 @@ contract ControllerV3Storage is ControllerV2Storage {
     }
 
     /// @notice A list of all markets
-    ICToken[] public allMarkets;
+    IMToken[] public allMarkets;
 
-    /// @notice The rate at which the flywheel distributes COMP, per block
-    uint256 public compRate;
+    /// @notice The rate at which the flywheel distributes NEB, per block
+    uint256 public nebRate;
 
-    /// @notice The portion of compRate that each market currently receives
-    mapping(address => uint256) public compSpeeds;
+    /// @notice The portion of nebRate that each market currently receives
+    mapping(address => uint256) public nebSpeeds;
 
-    /// @notice The COMP market supply state for each market
-    mapping(address => CompMarketState) public compSupplyState;
+    /// @notice The NEB market supply state for each market
+    mapping(address => NebMarketState) public nebSupplyState;
 
-    /// @notice The COMP market borrow state for each market
-    mapping(address => CompMarketState) public compBorrowState;
+    /// @notice The NEB market borrow state for each market
+    mapping(address => NebMarketState) public nebBorrowState;
 
-    /// @notice The COMP borrow index for each market for each supplier as of the last time they accrued COMP
-    mapping(address => mapping(address => uint256)) public compSupplierIndex;
+    /// @notice The NEB borrow index for each market for each supplier as of the last time they accrued NEB
+    mapping(address => mapping(address => uint256)) public nebSupplierIndex;
 
-    /// @notice The COMP borrow index for each market for each borrower as of the last time they accrued COMP
-    mapping(address => mapping(address => uint256)) public compBorrowerIndex;
+    /// @notice The NEB borrow index for each market for each borrower as of the last time they accrued NEB
+    mapping(address => mapping(address => uint256)) public nebBorrowerIndex;
 
-    /// @notice The COMP accrued but not yet transferred to each user
-    mapping(address => uint256) public compAccrued;
+    /// @notice The NEB accrued but not yet transferred to each user
+    mapping(address => uint256) public nebAccrued;
 }
 
 contract ControllerV4Storage is ControllerV3Storage {
@@ -133,22 +133,22 @@ contract ControllerV4Storage is ControllerV3Storage {
 }
 
 contract ControllerV5Storage is ControllerV4Storage {
-    /// @notice The portion of COMP that each contributor receives per block
-    mapping(address => uint256) public compContributorSpeeds;
+    /// @notice The portion of NEB that each contributor receives per block
+    mapping(address => uint256) public nebContributorSpeeds;
 
-    /// @notice Last block at which a contributor's COMP rewards have been allocated
+    /// @notice Last block at which a contributor's NEB rewards have been allocated
     mapping(address => uint256) public lastContributorBlock;
 }
 
 contract ControllerV6Storage is ControllerV5Storage {
     /// @notice The rate at which comp is distributed to the corresponding borrow market (per block)
-    mapping(address => uint256) public compBorrowSpeeds;
+    mapping(address => uint256) public nebBorrowSpeeds;
 
     /// @notice The rate at which comp is distributed to the corresponding supply market (per block)
-    mapping(address => uint256) public compSupplySpeeds;
+    mapping(address => uint256) public nebSupplySpeeds;
 }
 
 contract ControllerV7Storage is ControllerV6Storage {
-    /// @notice Accounting storage mapping account addresses to how much COMP they owe the protocol.
-    mapping(address => uint256) public compReceivable;
+    /// @notice Accounting storage mapping account addresses to how much NEB they owe the protocol.
+    mapping(address => uint256) public nebReceivable;
 }

@@ -2,8 +2,8 @@
 pragma solidity 0.8.10;
 
 /**
- * @title Compound's InterestRateModel Interface
- * @author Compound
+ * @title InterestRateModel Interface
+ * @author Blaize.tech
  */
 interface IInterestRateModel {
     function isInterestRateModel() external view returns (bool);
@@ -25,7 +25,7 @@ interface IInterestRateModel {
         uint256 cash,
         uint256 borrows,
         uint256 reserves,
-        uint256 duration 
+        uint256 duration
     ) external view returns (uint256);
 
     /**

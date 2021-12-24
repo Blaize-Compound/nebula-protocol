@@ -2,10 +2,10 @@
 pragma solidity 0.8.10;
 
 import "./IController.sol";
-import "./ICToken.sol";
+import "./IMToken.sol";
 import "./IInterestRateModel.sol";
 
-interface ICTokenEvents {
+interface IMTokenEvents {
     /*** Market Events ***/
 
     /**
@@ -67,7 +67,7 @@ interface ICTokenEvents {
         address liquidator,
         address borrower,
         uint256[] repayAmounts,
-        ICToken[] cTokenCollaterals
+        IMToken[] mTokenCollaterals
     );
 
     /*** Admin Events ***/
@@ -85,7 +85,7 @@ interface ICTokenEvents {
     /**
      * @notice Event emitted when comptroller is changed
      */
-    event NewComptroller(IController oldComptroller, IController newComptroller);
+    event NewController(IController oldController, IController newController);
 
     /**
      * @notice Event emitted when interestRateModel is changed

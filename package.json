@@ -22,7 +22,10 @@
     "generate-artifacts": "npm run compile && npm run generate-abi",
     "preinstall": "pip3 install -r requirements-dev.txt",
     "postinstall": "npm run clone-packages && npm run generate-artifacts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+
+    "add:metis-testnet": "brownie networks add \"Metis\" metis-testnet host=$METIS_TESTNET_RPC timeout=3000 chainid=588",
+    "add-metis-testnet-fork": "brownie networks add development metis-testnet-fork name=\"Ganache-CLI (Metis-Testnet-Fork)\" host=http://127.0.0.1 cmd=ganache-cli fork=metis-testnet accounts=10 gas_limit=12000000 evm_version=istanbul mnemonic=brownie port=8545 timeout=3000 default_balance=10000000"
   },
   "repository": {
     "type": "git"

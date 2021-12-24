@@ -127,7 +127,7 @@ contract BaseJumpRateModelV2 is IInterestRateModel {
         uint256 reserves,
         uint256 duration
     ) external view override returns (uint256) {
-        return getBorrowRateInternal(cash, borrows, reserves) * duration / secondsPerBlock;
+        return (getBorrowRateInternal(cash, borrows, reserves) * duration) / secondsPerBlock;
     }
 
     /**

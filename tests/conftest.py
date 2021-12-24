@@ -107,8 +107,8 @@ def controller(deployer, Controller):
 
 
 @pytest.fixture(scope="module")
-def cUsdc(deployer, usdc, usdc_rate_model, controller, CErc20):
-    ctoken = deployer.deploy(CErc20)
+def cUsdc(deployer, usdc, usdc_rate_model, controller, MErc20):
+    ctoken = deployer.deploy(MErc20)
     ctoken.initialize(
         usdc,
         controller,
@@ -116,7 +116,7 @@ def cUsdc(deployer, usdc, usdc_rate_model, controller, CErc20):
         2e14,
         "cUSDC",
         "CUSDC",
-        6
+        8
     )
     ctoken.setRestPeriod(4 * 3600)
     ctoken.setReserveFactor(0.1e18)
@@ -124,8 +124,8 @@ def cUsdc(deployer, usdc, usdc_rate_model, controller, CErc20):
 
 
 @pytest.fixture(scope="module")
-def cWbtc(deployer, wbtc, wbtc_rate_model, controller, CErc20):
-    ctoken = deployer.deploy(CErc20)
+def cWbtc(deployer, wbtc, wbtc_rate_model, controller, MErc20):
+    ctoken = deployer.deploy(MErc20)
     ctoken.initialize(
         wbtc,
         controller,
@@ -141,8 +141,8 @@ def cWbtc(deployer, wbtc, wbtc_rate_model, controller, CErc20):
 
 
 @pytest.fixture(scope="module")
-def cWeth(deployer, weth, weth_rate_model, controller, CErc20):
-    ctoken = deployer.deploy(CErc20)
+def cWeth(deployer, weth, weth_rate_model, controller, MErc20):
+    ctoken = deployer.deploy(MErc20)
     ctoken.initialize(
         weth,
         controller,
@@ -150,7 +150,7 @@ def cWeth(deployer, weth, weth_rate_model, controller, CErc20):
         2e26,
         "cWETH",
         "CWETH",
-        18
+        8
     )
     ctoken.setRestPeriod(4 * 3600)
     ctoken.setReserveFactor(0.25e18)

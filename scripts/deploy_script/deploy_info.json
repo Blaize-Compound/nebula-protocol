@@ -1,0 +1,14 @@
+{
+    "tokens": {
+        "METIS": "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+        "USDC": "0x5cCcEa21096E3709958650D91dDaC14c35DED212"
+    },
+    "deployedContracts": {
+        "Controller": "0x1A8F93058c550573016F5764210D73d33cEC35dC",
+        "UsdcRateModel": "0x6767E502Fb6A9Dee136a1eD8FDc4c6073408b209",
+        "MetisRateModel": "0xBe4eADeD696bADfF1848CA9a36e82020C214CCF3",
+        "MetisMarketToken": "0x2300878dBB49B868537525D9191ca443906896bd",
+        "UsdcMarketToken": "0x4077b4d3abE953F1cD38c43a187D2FaE43600c4C",
+        "PriceOracle": "0x21c816D909662F45d5b4Da4E1800F57faCFe048D"
+    }
+}

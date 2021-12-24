@@ -1,31 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./CToken.sol";
-import "./interfaces/ICToken.sol";
+import "./MToken.sol";
+import "./interfaces/IMToken.sol";
 import "./interfaces/IController.sol";
 import "./interfaces/IInterestRateModel.sol";
-import "./interfaces/ICErc20.sol";
+import "./interfaces/IMErc20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title Compound's CErc20 Contract
- * @notice CTokens which wrap an EIP-20 underlying
- * @author Compound
+ * @title Market ERC20 Contract
+ * @notice MTokens which wrap an EIP-20 underlying
+ * @author Blaize.tech
  */
-contract CErc20 is CToken, ICErc20 {
+contract MErc20 is MToken, IMErc20 {
     using SafeERC20 for IERC20;
     /**
-     * @notice Underlying asset for this CToken
+     * @notice Underlying asset for this MToken
      */
     address public underlying;
 
     /**
      * @notice Initialize the new money market
      * @param underlying_ The address of the underlying asset
-     * @param comptroller_ The address of the Comptroller
+     * @param controller_ The address of the Comptroller
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
      * @param name_ ERC-20 name of this token
@@ -34,15 +34,15 @@ contract CErc20 is CToken, ICErc20 {
      */
     function initialize(
         address underlying_,
-        IController comptroller_,
+        IController controller_,
         IInterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
         string memory name_,
         string memory symbol_,
         uint8 decimals_
     ) public {
-        // CToken initialize does the bulk of the work
-        super.initialize(comptroller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
+        // MToken initialize does the bulk of the work
+        super.initialize(controller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
 
         // Set underlying and sanity check it
         underlying = underlying_;
@@ -52,7 +52,7 @@ contract CErc20 is CToken, ICErc20 {
     /*** User Interface ***/
 
     /**
-     * @notice Sender supplies assets into the market and receives cTokens in exchange
+     * @notice Sender supplies assets into the market and receives mTokens in exchange
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param mintAmount The amount of the underlying asset to supply
      */
@@ -61,16 +61,16 @@ contract CErc20 is CToken, ICErc20 {
     }
 
     /**
-     * @notice Sender redeems cTokens in exchange for the underlying asset
+     * @notice Sender redeems mTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * @param redeemTokens The number of cTokens to redeem into underlying
+     * @param redeemTokens The number of mTokens to redeem into underlying
      */
     function redeem(uint256 redeemTokens) external returns (uint256) {
         redeemInternal(redeemTokens);
     }
 
     /**
-     * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
+     * @notice Sender redeems mTokens in exchange for a specified amount of underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to redeem
      */
@@ -118,9 +118,9 @@ contract CErc20 is CToken, ICErc20 {
     function liquidateBorrowFixedRate(
         address borrower,
         uint256[] memory borrowsIndexes,
-        ICToken[] memory cTokenCollaterals
+        IMToken[] memory mTokenCollaterals
     ) external {
-        liquidateBorrowFixedRateInternal(borrower, borrowsIndexes, cTokenCollaterals);
+        liquidateBorrowFixedRateInternal(borrower, borrowsIndexes, mTokenCollaterals);
     }
 
     /**
@@ -128,14 +128,14 @@ contract CErc20 is CToken, ICErc20 {
      *  The collateral seized is transferred to the liquidator.
      * @param borrower The borrower of this cToken to be liquidated
      * @param repayAmount The amount of the underlying borrowed asset to repay
-     * @param cTokenCollateral The market in which to seize collateral from the borrower
+     * @param mTokenCollateral The market in which to seize collateral from the borrower
      */
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
-        ICToken cTokenCollateral
+        IMToken mTokenCollateral
     ) external returns (uint256) {
-        liquidateBorrowInternal(borrower, repayAmount, cTokenCollateral);
+        liquidateBorrowInternal(borrower, repayAmount, mTokenCollateral);
     }
 
     /**
@@ -173,9 +173,6 @@ contract CErc20 is CToken, ICErc20 {
      *      This will revert due to insufficient balance or insufficient allowance.
      *      This function returns the actual amount received,
      *      which may be less than amount if there is a fee attached to the transfer.
-     *
-     *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
-     *            See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
     function doTransferIn(address from, uint256 amount) internal override returns (uint256) {
         IERC20 token = IERC20(underlying);
@@ -193,8 +190,6 @@ contract CErc20 is CToken, ICErc20 {
      *      insufficient cash held in this contract. If caller has checked protocol's balance prior to this call, and verified
      *      it is >= amount, this should not revert in normal conditions.
      *
-     *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
-     *            See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
     function doTransferOut(address payable to, uint256 amount) internal override {
         IERC20 token = IERC20(underlying);
