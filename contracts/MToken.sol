@@ -13,11 +13,19 @@ import "./interfaces/IMTokenEvents.sol";
  * @author Blaize.tech
  */
 abstract contract MToken is MTokenStorage, IMTokenEvents {
+
+    /**
+     * @notice Check that user is an admin
+     * @param _caller Address of user to check
+     */
     modifier onlyAdmin(address _caller) {
         require(_caller == admin, "Caller is not an admin");
         _;
     }
 
+    /**
+     * @notice Check that market is fresh
+     */
     modifier marketFresh() {
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "Market is not fresh");
@@ -196,7 +204,7 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
      * @notice Get a snapshot of the account's balances, and the cached exchange rate
      * @dev This is used by controller to more efficiently perform liquidity checks.
      * @param account Address of the account to snapshot
-     * @return (token balance, borrow balance, exchange rate mantissa)
+     * @return (token balance, borrow balance, exchange rate mantissa, borrow balance + fixed rate borrow balance)
      */
     function getAccountSnapshot(address account)
         external
@@ -224,6 +232,9 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         return block.number;
     }
 
+    /**
+     * @notice Returns total value of borrows, taken for variable and fixed rate
+     */
     function getTotalBorrows() external view returns (uint256) {
         return totalBorrows + totalBorrowsFixed;
     }
@@ -243,6 +254,11 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         return interestRateModel.getBorrowRate(getCashPrior(), totalBorrows + totalBorrowsFixed, totalReserves);
     }
 
+    /**
+     * @notice Returns current interest rate for a specific time, as if a loan is taken
+     * @dev Required in order to calculae possible interest rate for a fixed rate loan
+     * @param time Duration in seconds for which to apply current interest rate
+     */
     function borrowRatePerTime(uint256 time) external view returns (uint256) {
         return
             interestRateModel.getBorrowRatePerTime(
@@ -276,6 +292,9 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         return totalBorrows;
     }
 
+    /**
+     * @notice Returns the amount of account's borrows, taken for a fixed rate
+     */
     function fixedBorrowsAmount(address account) external view returns (uint256) {
         return accountFixedRateBorrows[account].length;
     }
@@ -290,6 +309,10 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         return borrowBalanceStored(account);
     }
 
+    /**
+     * @notice Returns an account's fixed rate borrows which can be luqidated
+     * @dev returns (uint256[] memory indexes, uint256[] memory repayAmounts) indexes of borrows, borrow amount plus interest to repay for each borrow
+     */
     function expiredBorrows(address account)
         external
         view
@@ -646,6 +669,11 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         controller.redeemVerify(address(this), redeemer, redeemAmount, redeemTokens);
     }
 
+    /**
+     * @notice Sender borrows from the protocol for a fixed rate and specified duration
+     * @param borrowAmount Amount of asset to borrow
+     * @param maturity Duration during which the borrow is safe
+     */
     function borrowFixedRateInternal(uint256 borrowAmount, uint256 maturity) internal nonReentrant {
         require(borrowAmount != 0, "Wrong borrow amount");
         require(maturity == 1 weeks || maturity == 2 weeks || maturity == 4 weeks, "Wrong maturity provided");
@@ -653,6 +681,11 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         borrowFixedRateFresh(payable(msg.sender), borrowAmount, maturity);
     }
 
+    /**
+     * @notice User borrows from the protocol for a fixed rate and specified duration
+     * @param borrowAmount Amount of asset to borrow
+     * @param maturity Duration during which the borrow is safe
+     */
     function borrowFixedRateFresh(
         address payable borrower,
         uint256 borrowAmount,
@@ -724,11 +757,20 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         emit Borrow(borrower, borrowAmount, accountBorrowsNew, totalBorrows);
     }
 
+    /**
+     * @notice Sender repays their own borrows, taken with fixed rate
+     * @param borrowsIndexes Indexes of borrows to repay
+     */
     function repayBorrowFixedRateInternal(uint256[] memory borrowsIndexes) internal nonReentrant {
         accrueInterest();
         repayBorrowFixedRateFresh(msg.sender, msg.sender, borrowsIndexes);
     }
 
+    /**
+     * @notice Sender repays borrower's borrows, taken with fixed rate
+     * @param borrower Address of borrower
+     * @param borrowsIndexes Indexes of borrows to repay
+     */
     function repayBorrowFixedRateOnBehalfInternal(address borrower, uint256[] memory borrowsIndexes)
         internal
         nonReentrant
@@ -737,6 +779,10 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         repayBorrowFixedRateFresh(msg.sender, borrower, borrowsIndexes);
     }
 
+    /**
+     * @notice User repays borrows, taken with fixed rate
+     * @param borrowsIndexes Indexes of borrows to repay
+     */
     function repayBorrowFixedRateFresh(
         address payer,
         address borrower,
@@ -868,6 +914,12 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         return actualRepayAmount;
     }
 
+    /**
+     * @notice The sender liquidates the borrowers collateral.
+     *  The collateral seized is transferred to the liquidator.
+     * @param borrower The borrower of this mToken to be liquidated
+     * @param borrowsIndexes Indexes of fixed rate borrows to be repaid on behalf of borrower 
+     */
     function liquidateBorrowFixedRateInternal(
         address borrower,
         uint256[] memory borrowsIndexes,
@@ -878,6 +930,9 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         liquidateBorrowFixedRate(msg.sender, borrower, borrowsIndexes, mTokensCollaterals);
     }
 
+    /**
+     * @notice The user liquidates the borrowers collateral.
+     */
     function liquidateBorrowFixedRate(
         address liquidator,
         address borrower,
@@ -915,6 +970,9 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
         emit LiquidateBorrowFixedRate(liquidator, borrower, actualRepayAmounts, mTokensCollaterals);
     }
 
+    /**
+     * @notice Verifies that provided fixed rate borrows can be liquidated
+     */
     function _liquidateFixedBorrowsAllowed(address borrower, uint256[] memory borrowsIndexes) internal {
         FixedRateBorrow[] storage borrows = accountFixedRateBorrows[borrower];
         for (uint256 i = 0; i < borrowsIndexes.length; i++) {

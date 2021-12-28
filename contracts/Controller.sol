@@ -491,10 +491,7 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         // Shh - currently unused
         seizeTokens;
         require(markets[mTokenCollateral].isListed && markets[mTokenBorrowed].isListed, "Market is not listed");
-        require(
-            IMToken(mTokenCollateral).controller() == IMToken(mTokenBorrowed).controller(),
-            "Controller mismatch"
-        );
+        require(IMToken(mTokenCollateral).controller() == IMToken(mTokenBorrowed).controller(), "Controller mismatch");
 
         // Keep the flywheel moving
         updateNebSupplyIndex(mTokenCollateral);
@@ -655,6 +652,7 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
      * @param account The account to determine liquidity for
      * @param redeemTokens The number of tokens to hypothetically redeem
      * @param borrowAmount The amount of underlying to hypothetically borrow
+     * @param withFixed flag to indicate whether to count or not account's fixed rate borrows
      * @dev Note that we calculate the exchangeRateStored for each collateral mToken using stored data,
      *  without calculating accumulated interest.
      * @return (possible error code,

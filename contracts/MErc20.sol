@@ -86,14 +86,27 @@ contract MErc20 is MToken, IMErc20 {
         borrowInternal(borrowAmount);
     }
 
+    /**
+     * @notice Sender borrows assets from the protcol at a fixed rate for a specified duration
+     * @param borrowAmount The amount of the underlying asset to borrow
+     * @param maturity Duration, during which the borrow is safe
+     */
     function borrowFixedRate(uint256 borrowAmount, uint256 maturity) external {
         borrowFixedRateInternal(borrowAmount, maturity);
     }
 
+    /**
+     * @notice Sender repays borrows, taken for fixed rate
+     * @param borrowsIndexes Indexes of borrows, which sender wants to repay
+     */
     function repayBorrowFixedRate(uint256[] memory borrowsIndexes) external {
         repayBorrowFixedRateInternal(borrowsIndexes);
     }
 
+    /**
+     * @notice Sender repays borrows, taken for fixed rate, belonging to borrower
+     * @param borrowsIndexes Indexes of borrows, which sender wants to repay
+     */
     function repayBorrowFixedRateOnBehalf(address borrower, uint256[] memory borrowsIndexes) external {
         repayBorrowFixedRateOnBehalfInternal(borrower, borrowsIndexes);
     }
@@ -115,6 +128,12 @@ contract MErc20 is MToken, IMErc20 {
         repayBorrowBehalfInternal(borrower, repayAmount);
     }
 
+    /**
+     * The sender liquidates the borrowers loans, taken for fixed rate.
+     * @param borrower The borrower, which fixed rate borrows to be liquidated
+     * @param borrowsIndexes Indexes of borrows, which sender wants to liquidate
+     * @param mTokenCollaterals The market in which to seize collateral from the borrower for each borrow
+     */
     function liquidateBorrowFixedRate(
         address borrower,
         uint256[] memory borrowsIndexes,
@@ -126,7 +145,7 @@ contract MErc20 is MToken, IMErc20 {
     /**
      * @notice The sender liquidates the borrowers collateral.
      *  The collateral seized is transferred to the liquidator.
-     * @param borrower The borrower of this cToken to be liquidated
+     * @param borrower The borrower of this mToken to be liquidated
      * @param repayAmount The amount of the underlying borrowed asset to repay
      * @param mTokenCollateral The market in which to seize collateral from the borrower
      */
