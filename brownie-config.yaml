@@ -1,65 +1,63 @@
 # use Ganache's forked mainnet mode as the default network
 # NOTE: You don't *have* to do this, but it is often helpful for testing
 networks:
-  default: development
-  development:
-    gas_limit: max
-    gas_buffer: 1
-    gas_price: 0
-    reverting_tx_gas_limit: max
-    default_contract_owner: true
-    default_balance: 100 ether
-    cmd_settings:
-      port: 8545
-      gas_limit: 6721975
-      accounts: 20
-      default_balance: 100 ether
+    default: development
+    development:
+        gas_limit: max
+        gas_buffer: 1
+        gas_price: 0
+        reverting_tx_gas_limit: max
+        default_contract_owner: true
+        default_balance: 100 ether
+        cmd_settings:
+            port: 8545
+            gas_limit: 6721975
+            accounts: 20
+            default_balance: 100 ether
 
-  mainnet:
-    gas_limit: 4800000
-    gas_price: 34000000000
-    cmd_settings:
-      gas_limit: 4800000
-    
-  # in command line brownie networks add Ethereum mainnet-new host=$YOUR_ARCHIVE_NODE chainid=1, $YOUR_ARCHIVE_NODE = Alchemy NODE.
-  # brownie console --network mainnet-fork
-  
-  # mainnet-fork:
-  #   chainid: 1
-  #   gas_limit: max
-  #   explorer: https://api.etherscan.io/api/5ACJCMXJ3BRTTNKJ5AQFYM4IMXXPG5AS7D
-  #   cmd_settings:
-  #     fork: https://mainnet.infura.io/v3/104f6a9ca053475f84dc662b1289f45e
-  #     accounts: 10
-  #     default_balance: 100000
-  #     gas_limit: 6721975
+    mainnet:
+        gas_limit: 4800000
+        gas_price: 34000000000
+        cmd_settings:
+            gas_limit: 4800000
 
-  rinkeby:
-    gas_limit: max
+    # in command line brownie networks add Ethereum mainnet-new host=$YOUR_ARCHIVE_NODE chainid=1, $YOUR_ARCHIVE_NODE = Alchemy NODE.
+    # brownie console --network mainnet-fork
 
-  
+    # mainnet-fork:
+    #   chainid: 1
+    #   gas_limit: max
+    #   explorer: https://api.etherscan.io/api/5ACJCMXJ3BRTTNKJ5AQFYM4IMXXPG5AS7D
+    #   cmd_settings:
+    #     fork: https://mainnet.infura.io/v3/104f6a9ca053475f84dc662b1289f45e
+    #     accounts: 10
+    #     default_balance: 100000
+    #     gas_limit: 6721975
+
+    rinkeby:
+        gas_limit: max
 
 # automatically fetch contract sources from Etherscan
 autofetch_sources: True
 
 # require OpenZeppelin Contracts
 dependencies:
-  - OpenZeppelin/openzeppelin-contracts@4.2.0
-  - OpenZeppelin/openzeppelin-contracts-upgradeable@4.2.0
+    - OpenZeppelin/openzeppelin-contracts@4.2.0
+    - OpenZeppelin/openzeppelin-contracts-upgradeable@4.2.0
 # path remapping to support imports from GitHub/NPM
 compiler:
-  solc:
-    version: 0.8.10
-    evm_version: null
-    remappings:
-       - "@openzeppelin=./node_modules/@openzeppelin" 
-    optimize: true
-    optimizer:
-      runs: 200
+    solc:
+        version: 0.8.10
+        evm_version: null
+        remappings:
+            - "@openzeppelin=./node_modules/@openzeppelin"
+        optimize: true
+        optimizer:
+            runs: 200
 
-  vyper:
-    version: 0.2.8
+    vyper:
+        version: 0.2.8
 
 reports:
-  exclude_contracts:
-    - SafeMath
+    exclude_contracts:
+        - SafeMath
