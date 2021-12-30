@@ -229,8 +229,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
         }
 
         /* If the redeemer is not in the market, then we can bypass the liquidity check */
-        if (accountMembership[address(mToken)][redeemer]) {
-            return false;
+        if (!accountMembership[address(mToken)][redeemer]) {
+            return true;
         }
 
         /* Otherwise, perform a hypothetical liquidity check to guard against shortfall */
@@ -688,12 +688,14 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             uint256 oraclePrice = oracle.getUnderlyingPrice(asset);
             require(oraclePrice != 0, "Failed to get price");
 
-            // Pre-Nebute a conversion factor from tokens -> ether (normalized price value)
+            // Pre-Compute a conversion factor from tokens -> ether (normalized price value)
             uint256 tokensToDenom = (((markets[address(asset)].collateralFactorMantissa *
                 accountInfo.exchangeRateMantissa) / 1e18) * oraclePrice) / 1e18;
 
             // sumCollateral += tokensToDenom * mTokenBalance
-            sumCollateral += (tokensToDenom * accountInfo.mTokenBalance) / 1e18;
+            sumCollateral +=
+                (tokensToDenom * accountInfo.mTokenBalance) /
+                10**(IERC20Metadata(IMErc20(address(asset)).underlying()).decimals());
             // sumBorrowPlusEffects += oraclePrice * borrowBalance
             sumBorrowPlusEffects +=
                 (oraclePrice * accountInfo.borrowBalance) /
@@ -703,7 +705,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             if (asset == mTokenModify) {
                 // redeem effect
                 // sumBorrowPlusEffects += tokensToDenom * redeemTokens
-                sumBorrowPlusEffects += (tokensToDenom * redeemTokens) / 1e18;
+                sumBorrowPlusEffects +=
+                    (tokensToDenom * redeemTokens) /
+                    10**(IERC20Metadata(IMErc20(address(asset)).underlying()).decimals());
 
                 // borrow effect
                 // sumBorrowPlusEffects += oraclePrice * borrowAmount
