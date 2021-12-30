@@ -32,11 +32,15 @@
     "redeem-usdc": "brownie run ./scripts/redeem_mUsdc.py --network metis-testnet",
     "borrow-usdc": "brownie run ./scripts/borrow_variable_rate_usdc.py --network metis-testnet",
     "repay-usdc": "brownie run ./scripts/repay_borrow_variable_usdc.py --network metis-testnet",
+    "borrow-fixed-usdc": "brownie run ./scripts/borrow_fixed_rate_usdc.py --network metis-testnet",
+    "repay-fixed-usdc": "brownie run ./scripts/repay_fixed_usdc.py --network metis-testnet",
 
     "deposit-metis": "brownie run ./scripts/deposit_mMetis.py --network metis-testnet",
     "redeem-metis": "brownie run ./scripts/redeem_mMetis.py --network metis-testnet",
     "borrow-metis": "brownie run ./scripts/borrow_variable_rate_metis.py --network metis-testnet",
-    "repay-metis": "brownie run ./scripts/repay_borrow_variable_metis.py --network metis-testnet"
+    "repay-metis": "brownie run ./scripts/repay_borrow_variable_metis.py --network metis-testnet",
+    "borrow-fixed-metis": "brownie run ./scripts/borrow_fixed_rate_metis.py --network metis-testnet",
+    "repay-fixed-metis": "brownie run ./scripts/repay_fixed_metis.py --network metis-testnet"
   },
   "repository": {
     "type": "git"

@@ -693,7 +693,8 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
                 accountInfo.exchangeRateMantissa) / 1e18) * oraclePrice) / 1e18;
 
             // sumCollateral += tokensToDenom * mTokenBalance
-            sumCollateral += (tokensToDenom * accountInfo.mTokenBalance) /
+            sumCollateral +=
+                (tokensToDenom * accountInfo.mTokenBalance) /
                 10**(IERC20Metadata(IMErc20(address(asset)).underlying()).decimals());
             // sumBorrowPlusEffects += oraclePrice * borrowBalance
             sumBorrowPlusEffects +=
@@ -704,8 +705,9 @@ contract Controller is ControllerV7Storage, IController, IControllerEvents {
             if (asset == mTokenModify) {
                 // redeem effect
                 // sumBorrowPlusEffects += tokensToDenom * redeemTokens
-                sumBorrowPlusEffects += (tokensToDenom * redeemTokens) /
-                10**(IERC20Metadata(IMErc20(address(asset)).underlying()).decimals());
+                sumBorrowPlusEffects +=
+                    (tokensToDenom * redeemTokens) /
+                    10**(IERC20Metadata(IMErc20(address(asset)).underlying()).decimals());
 
                 // borrow effect
                 // sumBorrowPlusEffects += oraclePrice * borrowAmount
