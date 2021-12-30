@@ -2,21 +2,16 @@
 pragma solidity 0.8.10;
 
 import "./IController.sol";
-import "./ICToken.sol";
+import "./IMToken.sol";
 import "./IInterestRateModel.sol";
 
-interface ICTokenEvents {
+interface IMTokenEvents {
     /*** Market Events ***/
 
     /**
      * @notice Event emitted when interest is accrued
      */
-    event AccrueInterest(
-        uint256 cashPrior,
-        uint256 interestAccumulated,
-        uint256 borrowIndex,
-        uint256 totalBorrows
-    );
+    event AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows);
 
     /**
      * @notice Event emitted when tokens are minted
@@ -31,22 +26,12 @@ interface ICTokenEvents {
     /**
      * @notice Event emitted when underlying is borrowed
      */
-    event Borrow(
-        address borrower,
-        uint256 borrowAmount,
-        uint256 accountBorrows,
-        uint256 totalBorrows
-    );
+    event Borrow(address borrower, uint256 borrowAmount, uint256 accountBorrows, uint256 totalBorrows);
 
     /**
      * @notice Event emitted when underlying is borrowed with fixed rate
      */
-    event BorrowFixedRate(
-        address borrower,
-        uint256 borrowAmount,
-        uint256 openedAt,
-        uint256 maturity
-    );
+    event BorrowFixedRate(address borrower, uint256 borrowAmount, uint256 openedAt, uint256 maturity);
 
     /**
      * @notice Event emitted when a borrow is repaid
@@ -82,7 +67,7 @@ interface ICTokenEvents {
         address liquidator,
         address borrower,
         uint256[] repayAmounts,
-        ICToken[] cTokenCollaterals
+        IMToken[] mTokenCollaterals
     );
 
     /*** Admin Events ***/
@@ -100,44 +85,27 @@ interface ICTokenEvents {
     /**
      * @notice Event emitted when comptroller is changed
      */
-    event NewComptroller(
-        IController oldComptroller,
-        IController newComptroller
-    );
+    event NewController(IController oldController, IController newController);
 
     /**
      * @notice Event emitted when interestRateModel is changed
      */
-    event NewMarketInterestRateModel(
-        IInterestRateModel oldInterestRateModel,
-        IInterestRateModel newInterestRateModel
-    );
+    event NewMarketInterestRateModel(IInterestRateModel oldInterestRateModel, IInterestRateModel newInterestRateModel);
 
     /**
      * @notice Event emitted when the reserve factor is changed
      */
-    event NewReserveFactor(
-        uint256 oldReserveFactorMantissa,
-        uint256 newReserveFactorMantissa
-    );
+    event NewReserveFactor(uint256 oldReserveFactorMantissa, uint256 newReserveFactorMantissa);
 
     /**
      * @notice Event emitted when the reserves are added
      */
-    event ReservesAdded(
-        address benefactor,
-        uint256 addAmount,
-        uint256 newTotalReserves
-    );
+    event ReservesAdded(address benefactor, uint256 addAmount, uint256 newTotalReserves);
 
     /**
      * @notice Event emitted when the reserves are reduced
      */
-    event ReservesReduced(
-        address admin,
-        uint256 reduceAmount,
-        uint256 newTotalReserves
-    );
+    event ReservesReduced(address admin, uint256 reduceAmount, uint256 newTotalReserves);
 
     /**
      * @notice EIP20 Transfer event
@@ -147,11 +115,7 @@ interface ICTokenEvents {
     /**
      * @notice EIP20 Approval event
      */
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 amount
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
 
     /**
      * @notice Failure event

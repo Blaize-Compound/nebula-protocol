@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 import "./IController.sol";
 import "./IInterestRateModel.sol";
 
-interface ICToken {
+interface IMToken {
     /*** User Interface ***/
 
     function transfer(address dst, uint256 amount) external returns (bool);
@@ -17,10 +17,7 @@ interface ICToken {
 
     function approve(address spender, uint256 amount) external returns (bool);
 
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     function balanceOf(address owner) external view returns (uint256);
 
@@ -42,6 +39,10 @@ interface ICToken {
 
     function borrowRatePerBlock() external view returns (uint256);
 
+    function borrowRatePerTime(uint256 time) external view returns (uint256);
+
+    function fixedBorrowsAmount(address account) external view returns (uint256);
+
     function expiredBorrows(address account)
         external
         view
@@ -53,10 +54,7 @@ interface ICToken {
 
     function borrowBalanceCurrent(address account) external returns (uint256);
 
-    function borrowBalanceStored(address account)
-        external
-        view
-        returns (uint256);
+    function borrowBalanceStored(address account) external view returns (uint256);
 
     function exchangeRateCurrent() external returns (uint256);
 
@@ -78,9 +76,9 @@ interface ICToken {
 
     function borrowIndex() external view returns (uint256);
 
-    function comptroller() external view returns (IController);
+    function controller() external view returns (IController);
 
-    function isCToken() external view returns (bool);
+    function isMToken() external view returns (bool);
 
     function reserveFactorMantissa() external view returns (uint256);
 
@@ -96,6 +94,5 @@ interface ICToken {
 
     function reduceReserves(uint256 reduceAmount) external;
 
-    function setInterestRateModel(IInterestRateModel newInterestRateModel)
-        external;
+    function setInterestRateModel(IInterestRateModel newInterestRateModel) external;
 }

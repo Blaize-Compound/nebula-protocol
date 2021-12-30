@@ -13,4 +13,8 @@ contract ERC20PresetMinterPauserMock is ERC20PresetMinterPauser {
     ) ERC20PresetMinterPauser(name, symbol) {
         _decimals = dec;
     }
+
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
 }

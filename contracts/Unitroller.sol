@@ -5,25 +5,19 @@ import "./ControllerStorage.sol";
 
 /**
  * @title ComptrollerCore
- * @dev Storage for the comptroller is at this address, while execution is delegated to the comptrollerImplementation.
+ * @dev Storage for the comptroller is at this address, while execution is delegated to the controllerImplementation.
  * CTokens should reference this contract as their comptroller.
  */
 contract Unitroller is UnitrollerAdminStorage {
     /**
-     * @notice Emitted when pendingComptrollerImplementation is changed
+     * @notice Emitted when pendingControllerImplementation is changed
      */
-    event NewPendingImplementation(
-        address oldPendingImplementation,
-        address newPendingImplementation
-    );
+    event NewPendingImplementation(address oldPendingImplementation, address newPendingImplementation);
 
     /**
-     * @notice Emitted when pendingComptrollerImplementation is accepted, which means comptroller implementation is updated
+     * @notice Emitted when pendingControllerImplementation is accepted, which means comptroller implementation is updated
      */
-    event NewImplementation(
-        address oldImplementation,
-        address newImplementation
-    );
+    event NewImplementation(address oldImplementation, address newImplementation);
 
     /**
      * @notice Emitted when pendingAdmin is changed
@@ -46,16 +40,10 @@ contract Unitroller is UnitrollerAdminStorage {
     }
 
     /*** Admin Functions ***/
-    function setPendingImplementation(address newPendingImplementation)
-        public
-        onlyAdmin(msg.sender)
-    {
-        address oldPendingImplementation = pendingComptrollerImplementation;
-        pendingComptrollerImplementation = newPendingImplementation;
-        emit NewPendingImplementation(
-            oldPendingImplementation,
-            pendingComptrollerImplementation
-        );
+    function setPendingImplementation(address newPendingImplementation) public onlyAdmin(msg.sender) {
+        address oldPendingImplementation = pendingControllerImplementation;
+        pendingControllerImplementation = newPendingImplementation;
+        emit NewPendingImplementation(oldPendingImplementation, pendingControllerImplementation);
     }
 
     /**
@@ -65,21 +53,17 @@ contract Unitroller is UnitrollerAdminStorage {
     function acceptImplementation() public returns (bool) {
         // Check caller is pendingImplementation and pendingImplementation != address(0)
         require(
-            msg.sender == pendingComptrollerImplementation &&
-                pendingComptrollerImplementation != address(0),
+            msg.sender == pendingControllerImplementation && pendingControllerImplementation != address(0),
             "Unauthorized"
         );
 
-        address oldImplementation = comptrollerImplementation;
-        address oldPendingImplementation = pendingComptrollerImplementation;
-        comptrollerImplementation = pendingComptrollerImplementation;
-        pendingComptrollerImplementation = address(0);
+        address oldImplementation = controllerImplementation;
+        address oldPendingImplementation = pendingControllerImplementation;
+        controllerImplementation = pendingControllerImplementation;
+        pendingControllerImplementation = address(0);
 
-        emit NewImplementation(oldImplementation, comptrollerImplementation);
-        emit NewPendingImplementation(
-            oldPendingImplementation,
-            pendingComptrollerImplementation
-        );
+        emit NewImplementation(oldImplementation, controllerImplementation);
+        emit NewPendingImplementation(oldPendingImplementation, pendingControllerImplementation);
 
         return true;
     }
@@ -89,10 +73,7 @@ contract Unitroller is UnitrollerAdminStorage {
      * @dev Admin function to begin change of admin. The newPendingAdmin must call _acceptAdmin to finalize the transfer.
      * @param newPendingAdmin New pending admin.
      */
-    function setPendingAdmin(address newPendingAdmin)
-        public
-        onlyAdmin(msg.sender)
-    {
+    function setPendingAdmin(address newPendingAdmin) public onlyAdmin(msg.sender) {
         require(newPendingAdmin != address(0), "Zero address");
         address oldPendingAdmin = pendingAdmin;
         pendingAdmin = newPendingAdmin;
@@ -126,7 +107,7 @@ contract Unitroller is UnitrollerAdminStorage {
      */
     fallback() external payable {
         // delegate all other functions to current implementation
-        (bool success, ) = comptrollerImplementation.delegatecall(msg.data);
+        (bool success, ) = controllerImplementation.delegatecall(msg.data);
 
         assembly {
             let free_mem_ptr := mload(0x40)

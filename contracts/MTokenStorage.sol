@@ -3,13 +3,13 @@ pragma solidity 0.8.10;
 
 import "./interfaces/IController.sol";
 import "./interfaces/IInterestRateModel.sol";
-import "./interfaces/ICToken.sol";
+import "./interfaces/IMToken.sol";
 
-abstract contract CTokenStorage is ICToken {
+abstract contract MTokenStorage is IMToken {
     /**
      * @notice Indicator that this is a CToken contract (for inspection)
      */
-    bool public constant isCToken = true;
+    bool public constant isMToken = true;
 
     /**
      * @dev Guard variable for re-entrancy checks
@@ -55,7 +55,7 @@ abstract contract CTokenStorage is ICToken {
     /**
      * @notice Contract which oversees inter-cToken operations
      */
-    IController public comptroller;
+    IController public controller;
 
     /**
      * @notice Model which tells what the current interest rate should be
@@ -149,7 +149,7 @@ abstract contract CTokenStorage is ICToken {
     /**
      * @notice Mapping of account addresses to array of every fixed borrow
      */
-    mapping(address => FixedRateBorrow[]) internal accountFixedRateBorrows;
+    mapping(address => FixedRateBorrow[]) public accountFixedRateBorrows;
 
     /**
      * @notice Share of seized collateral that is added to reserves

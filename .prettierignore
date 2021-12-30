@@ -1,0 +1,12 @@
+# Ignore artifacts:
+build
+coverage
+docgen
+docs
+flatten
+abi
+coverage.json
+.*
+README.md
+package.json
+package-lock.json
