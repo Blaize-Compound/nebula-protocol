@@ -13,7 +13,6 @@ import "./interfaces/IMTokenEvents.sol";
  * @author Blaize.tech
  */
 abstract contract MToken is MTokenStorage, IMTokenEvents {
-
     /**
      * @notice Check that user is an admin
      * @param _caller Address of user to check
@@ -918,7 +917,7 @@ abstract contract MToken is MTokenStorage, IMTokenEvents {
      * @notice The sender liquidates the borrowers collateral.
      *  The collateral seized is transferred to the liquidator.
      * @param borrower The borrower of this mToken to be liquidated
-     * @param borrowsIndexes Indexes of fixed rate borrows to be repaid on behalf of borrower 
+     * @param borrowsIndexes Indexes of fixed rate borrows to be repaid on behalf of borrower
      */
     function liquidateBorrowFixedRateInternal(
         address borrower,
