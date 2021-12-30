@@ -23,7 +23,6 @@
     "preinstall": "pip3 install -r requirements-dev.txt",
     "postinstall": "npm run clone-packages && npm run generate-artifacts",
     "prepare": "husky install",
-
     "add:metis-testnet": "brownie networks add \"Metis\" metis-testnet host=$METIS_TESTNET_RPC timeout=3000 chainid=588",
     "add-metis-testnet-fork": "brownie networks add development metis-testnet-fork name=\"Ganache-CLI (Metis-Testnet-Fork)\" host=http://127.0.0.1 cmd=ganache-cli fork=metis-testnet accounts=10 gas_limit=12000000 evm_version=istanbul mnemonic=brownie port=8545 timeout=3000 default_balance=10000000"
   },
@@ -34,8 +33,8 @@
   "author": "Blaize.tech",
   "license": "ISC",
   "dependencies": {
-    "@openzeppelin/contracts": "4.2.0",
-    "@openzeppelin/contracts-upgradeable": "4.2.0",
+    "@openzeppelin/contracts": ">=4.4.1",
+    "@openzeppelin/contracts-upgradeable": ">=4.4.1",
     "dotenv": "^10.0.0",
     "ganache-cli": "^6.12.2",
     "web3": "^1.5.2",
@@ -50,7 +49,7 @@
     "solc": "0.8.6",
     "solhint": "^3.3.6",
     "solidity-docgen": "^0.5.13",
-    "truffle": "^5.4.9",
+    "truffle": "^5.4.26",
     "truffle-contract-size": "^2.0.1"
   }
 }
