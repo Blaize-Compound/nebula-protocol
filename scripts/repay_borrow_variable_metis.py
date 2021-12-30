@@ -21,21 +21,6 @@ def main():
     metis = ERC20PresetMinterPauserMock.at(tokens["METIS"])
     metis_market = MErc20.at(deployed_contracts_addresses["MetisMarketToken"])
 
-    rate_model = BaseJumpRateModelV2.at(deployed_contracts_addresses["MetisRateModel"])
-
-    print("Cash: ", metis.balanceOf(metis_market))
-    print("Borrows: ",  metis_market.getTotalBorrows())
-    print("reserves: ", metis_market.totalReserves())
-    print(rate_model.utilizationRate(
-        metis.balanceOf(metis_market),
-        metis_market.getTotalBorrows(),
-        metis_market.totalReserves()
-    ))
-    print(rate_model.getBorrowRate(
-        metis.balanceOf(metis_market),
-        metis_market.getTotalBorrows(),
-        metis_market.totalReserves()
-    ))
     # !!! NOTE !!! You need to have enough Metis tokens in order to repay your borrow
     borrow_amount = metis_market.borrowBalanceStored(user)
 
