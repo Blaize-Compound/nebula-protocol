@@ -24,7 +24,19 @@
     "postinstall": "npm run clone-packages && npm run generate-artifacts",
     "prepare": "husky install",
     "add:metis-testnet": "brownie networks add \"Metis\" metis-testnet host=$METIS_TESTNET_RPC timeout=3000 chainid=588",
-    "add-metis-testnet-fork": "brownie networks add development metis-testnet-fork name=\"Ganache-CLI (Metis-Testnet-Fork)\" host=http://127.0.0.1 cmd=ganache-cli fork=metis-testnet accounts=10 gas_limit=12000000 evm_version=istanbul mnemonic=brownie port=8545 timeout=3000 default_balance=10000000"
+    "add-metis-testnet-fork": "brownie networks add development metis-testnet-fork name=\"Ganache-CLI (Metis-Testnet-Fork)\" host=http://127.0.0.1 cmd=ganache-cli fork=metis-testnet accounts=10 gas_limit=12000000 evm_version=istanbul mnemonic=brownie port=8545 timeout=3000 default_balance=10000000",
+  
+    "mint-test-usdc": "brownie run ./scripts/mint_usdc.py --network metis-testnet",
+
+    "deposit-usdc": "brownie run ./scripts/deposit_mUsdc.py --network metis-testnet",
+    "redeem-usdc": "brownie run ./scripts/redeem_mUsdc.py --network metis-testnet",
+    "borrow-usdc": "brownie run ./scripts/borrow_variable_rate_usdc.py --network metis-testnet",
+    "repay-usdc": "brownie run ./scripts/repay_borrow_variable_usdc.py --network metis-testnet",
+
+    "deposit-metis": "brownie run ./scripts/deposit_mMetis.py --network metis-testnet",
+    "redeem-metis": "brownie run ./scripts/redeem_mMetis.py --network metis-testnet",
+    "borrow-metis": "brownie run ./scripts/borrow_variable_rate_metis.py --network metis-testnet",
+    "repay-metis": "brownie run ./scripts/repay_borrow_variable_metis.py --network metis-testnet"
   },
   "repository": {
     "type": "git"

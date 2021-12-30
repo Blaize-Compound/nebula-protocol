@@ -103,6 +103,9 @@ contract BaseJumpRateModelV2 is IInterestRateModel {
             return 0;
         }
 
+        if (cash + borrows - reserves == 0)
+            return 0;
+
         return (borrows * 1e18) / (cash + borrows - reserves);
     }
 
